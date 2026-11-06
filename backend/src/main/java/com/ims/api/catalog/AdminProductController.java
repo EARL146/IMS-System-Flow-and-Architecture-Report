@@ -1,9 +1,9 @@
 package com.ims.api.catalog;
 
+import com.ims.api.common.PageResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -17,8 +17,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.validation.annotation.Validated;
 
 @RestController
+@Validated
 @RequestMapping("/api/v1/admin/products")
 @PreAuthorize("hasAnyRole('OWNER','ADMIN')")
 public class AdminProductController {
@@ -29,10 +31,10 @@ public class AdminProductController {
     }
 
     @GetMapping
-    public Page<ProductDtos.AdminProductResponse> list(
+    public PageResponse<ProductDtos.AdminProductResponse> list(
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "50") @Min(1) @Max(100) int size) {
-        return products.listAdmin(PageRequest.of(page, size));
+        return PageResponse.from(products.listAdmin(PageRequest.of(page, size)));
     }
 
     @GetMapping("/{id}")

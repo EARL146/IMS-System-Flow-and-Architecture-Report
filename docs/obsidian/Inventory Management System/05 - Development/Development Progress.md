@@ -15,11 +15,11 @@ status: active
 - [x] Added Flyway schema for identities, catalog, warehouses, stock balances, movement ledger, and idempotency reservations.
 - [x] Implemented transaction-locked stock adjustments, negative-stock protection, movement recording, and database-reserved idempotent retry/reuse handling.
 - [x] Added exact-Origin checks for refresh/logout with an HttpOnly, SameSite=Strict refresh cookie.
-- [x] Frontend production build passes; 2 frontend UI tests pass; backend compiles and 6 unit tests pass (4 inventory, 2 origin guard).
+- [x] Frontend production build passes; 2 frontend UI tests pass; backend compiles and 11 tests pass (5 H2 app/security smoke, 2 origin guard, 4 inventory).
 - [x] Added database setup notes, environment loader, README, and Obsidian-ready project notes.
 
 ## Pending
-- [ ] Provision MySQL credentials and verify the Flyway migration, Hibernate validation, and API startup.
+- [ ] Provision MySQL credentials and verify the Flyway migration, Hibernate validation, and API startup. Current app smoke tests use H2 and disable Flyway.
 - [ ] Add permission-level RBAC, business/warehouse scopes, staff account management, persistent security audit events, login abuse limits, password recovery, and integration/security review of CSRF controls.
 - [ ] Implement suppliers and purchasing, customer accounts/cart/checkout/orders, POS/sales, payments, returns/refunds, reporting, notifications, and support.
 - [ ] Expand frontend coverage and add backend integration, authorization, security, and database concurrency tests.

@@ -6,7 +6,7 @@ status: implemented-partial
 
 # API Overview
 
-Base path: `/api/v1`. Controllers use DTOs, Jakarta validation, consistent errors, pagination limits, role guards, and springdoc OpenAPI. MySQL-backed startup and endpoint integration are not yet verified.
+Base path: `/api/v1`. Controllers use DTOs, Jakarta validation, consistent errors, bounded pagination with a stable page response DTO, role guards, and springdoc OpenAPI. H2 route smoke tests pass; MySQL-backed startup and endpoint integration are not yet verified.
 
 Implemented routes:
 - Auth: `POST /auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout`.

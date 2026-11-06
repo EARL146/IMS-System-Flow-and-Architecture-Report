@@ -31,8 +31,8 @@ tags: [ims, planning, assessment]
 - Implemented code: responsive storefront/catalog, staff app shell, product and category management, warehouse management, dashboard, stock adjustments and ledger history, customer registration/login, JWT access tokens, rotating refresh sessions, owner bootstrap, DTO validation, common errors, and OpenAPI.
 - Inventory integrity includes locked balance rows, non-negative checks, one database transaction for balance/movement writes, and a unique-key reservation that makes concurrent retries replay the original adjustment or reject a changed payload.
 - Cookie refresh/logout requests require an exact allowed Origin; refresh cookies are HttpOnly and SameSite=Strict.
-- Verified: Vite production build succeeds with 2 UI tests passing; Maven backend build succeeds with 6 unit tests passing (4 inventory, 2 origin guard).
-- Not verified: MySQL database creation, Flyway migration, Hibernate schema validation, backend startup with MySQL, and phpMyAdmin table inspection. Existing local credentials were unavailable.
+- Verified: Vite production build succeeds with 2 UI tests passing; Maven backend build succeeds with 11 tests passing (5 H2 app/security smoke, 2 origin guard, 4 inventory).
+- Not verified: MySQL database creation, Flyway migration, Hibernate schema validation against MySQL, and phpMyAdmin table inspection. Existing local credentials were unavailable. The H2 profile disables Flyway and does not replace those checks.
 - Not implemented: business/tenant scoping, permission-level administration, user administration, login abuse controls, security audit persistence, procurement, customer checkout/orders, POS, payments, returns/refunds, reports, support, and notifications. Origin-guard behavior still needs integration testing and security review.
 - Obsidian-ready notes exist under `docs/obsidian/Inventory Management System/` but have not been copied to a registered vault. No GitHub remote is configured.
 
