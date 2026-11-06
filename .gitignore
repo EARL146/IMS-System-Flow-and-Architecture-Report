@@ -1,0 +1,32 @@
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+**/application-local.yml
+**/application-local.properties
+*.pem
+*.key
+
+# Node
+node_modules/
+frontend/dist/
+frontend/.vite/
+npm-debug.log*
+
+# Java / Maven
+backend/target/
+*.class
+*.log
+
+# Local database, uploads, and generated exports
+data/
+uploads/
+exports/
+*.sql.gz
+*.dump
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
