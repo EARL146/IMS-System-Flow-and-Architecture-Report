@@ -15,7 +15,7 @@ status: active
 
 ## Current results
 - Frontend production build: passed.
-- Frontend UI tests: 2 passed (catalog rendering/filtering and required-field validation).
+- Frontend UI tests: 3 passed (catalog rendering/filtering, required-field validation, and product edit/update).
 - Backend: 11 passed — 5 H2 application/security smoke tests, 2 origin-guard unit tests, and 4 inventory service unit tests.
 - H2 smoke coverage includes public catalog paging, page-size limit validation, unauthenticated management rejection, and accepted/rejected refresh origins. Flyway is disabled in this test profile.
 - MySQL integration/migration, authorization matrix, and true multi-connection concurrency tests: not run; no application DB account is available.

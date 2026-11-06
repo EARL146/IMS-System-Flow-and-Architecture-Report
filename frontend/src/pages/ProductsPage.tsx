@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
-import { Archive, Boxes, Plus, Search, X } from 'lucide-react'
+import { Archive, Boxes, Pencil, Plus, Search, X } from 'lucide-react'
 import { api, getErrorMessage } from '../api/client'
 
 interface Product {
@@ -10,8 +10,11 @@ interface Product {
   sku: string
   barcode: string | null
   name: string
+  description: string | null
+  categoryId: number | null
   categoryName: string | null
   unitOfMeasure: string
+  trackingType: 'QUANTITY' | 'NONE'
   costPrice: number
   sellingPrice: number
   reorderLevel: number
@@ -51,6 +54,7 @@ export function ProductsPage() {
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [formOpen, setFormOpen] = useState(false)
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [filter, setFilter] = useState('')
@@ -97,7 +101,7 @@ export function ProductsPage() {
     <>
       <div className="page-title-row">
         <div><div className="eyebrow">PRODUCT MANAGEMENT</div><h1>Products</h1><p>Manage catalog details, prices and reorder thresholds.</p></div>
-        <button className="primary-button" onClick={() => setFormOpen(true)}><Plus size={17} /> Add product</button>
+        <button className="primary-button" onClick={() => { setEditingProduct(null); setFormOpen(true) }}><Plus size={17} /> Add product</button>
       </div>
       {notice && <div className="notice notice-success">{notice}</div>}
       {error && <div className="notice notice-error">{error}</div>}
@@ -117,34 +121,55 @@ export function ProductsPage() {
               <td>{formatMoney(product.costPrice)}</td><td><strong>{formatMoney(product.sellingPrice)}</strong></td>
               <td>{product.reorderLevel} {product.unitOfMeasure}</td>
               <td><span className={'status-pill ' + (product.active ? 'status-live' : 'status-muted')}>{product.active ? 'Active' : 'Archived'}</span></td>
-              <td>{product.active && <button className="icon-button" aria-label={'Archive ' + product.name} title="Archive product" onClick={() => void archiveProduct(product)}><Archive size={16} /></button>}</td>
+              <td className="table-actions">{product.active && <>
+                <button className="icon-button" aria-label={'Edit ' + product.name} title="Edit product" onClick={() => { setEditingProduct(product); setFormOpen(true) }}><Pencil size={16} /></button>
+                <button className="icon-button" aria-label={'Archive ' + product.name} title="Archive product" onClick={() => void archiveProduct(product)}><Archive size={16} /></button>
+              </>}</td>
             </tr>)}</tbody>
           </table></div>
         )}
       </section>
 
-      {formOpen && <ProductForm categories={categories} onClose={() => setFormOpen(false)} onCreated={async () => { setFormOpen(false); setNotice('Product created.'); await load() }} />}
+      {formOpen && <ProductForm
+        categories={categories}
+        product={editingProduct}
+        onClose={() => { setFormOpen(false); setEditingProduct(null) }}
+        onSaved={async () => { setFormOpen(false); setNotice(editingProduct ? 'Product updated.' : 'Product created.'); setEditingProduct(null); await load() }}
+      />}
     </>
   )
 }
 
-function ProductForm({ categories, onClose, onCreated }: { categories: Category[]; onClose: () => void; onCreated: () => Promise<void> }) {
+function ProductForm({ categories, product, onClose, onSaved }: { categories: Category[]; product: Product | null; onClose: () => void; onSaved: () => Promise<void> }) {
   const [error, setError] = useState('')
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
-    defaultValues: blankProduct,
+    defaultValues: product ? {
+      sku: product.sku,
+      barcode: product.barcode ?? '',
+      name: product.name,
+      description: product.description ?? '',
+      categoryId: product.categoryId ? String(product.categoryId) : '',
+      unitOfMeasure: product.unitOfMeasure,
+      trackingType: product.trackingType,
+      costPrice: String(product.costPrice),
+      sellingPrice: String(product.sellingPrice),
+      reorderLevel: String(product.reorderLevel),
+    } : blankProduct,
   })
 
   async function submit(values: ProductFormValues) {
     setError('')
     try {
-      await api.post('/admin/products', {
+      const payload = {
         ...values,
         barcode: values.barcode?.trim() || null,
         description: values.description?.trim() || null,
         categoryId: values.categoryId ? Number(values.categoryId) : null,
-      })
-      await onCreated()
+      }
+      if (product) await api.put('/admin/products/' + product.id, payload)
+      else await api.post('/admin/products', payload)
+      await onSaved()
     } catch (requestError) {
       setError(getErrorMessage(requestError, 'Product could not be saved.'))
     }
@@ -153,7 +178,7 @@ function ProductForm({ categories, onClose, onCreated }: { categories: Category[
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
       <section className="product-modal" role="dialog" aria-modal="true" aria-labelledby="product-form-title">
-        <div className="modal-heading"><div><div className="eyebrow">CATALOG RECORD</div><h2 id="product-form-title">Add a product</h2></div><button className="icon-button" aria-label="Close" onClick={onClose}><X size={18} /></button></div>
+        <div className="modal-heading"><div><div className="eyebrow">CATALOG RECORD</div><h2 id="product-form-title">{product ? 'Edit product' : 'Add a product'}</h2></div><button className="icon-button" aria-label="Close" onClick={onClose}><X size={18} /></button></div>
         <form onSubmit={handleSubmit(submit)} className="product-form">
           <div className="form-grid">
             <label>Product name<input {...register('name')} />{errors.name && <small className="field-error">{errors.name.message}</small>}</label>
@@ -168,7 +193,7 @@ function ProductForm({ categories, onClose, onCreated }: { categories: Category[
           </div>
           <label>Description<textarea rows={3} {...register('description')} /></label>
           {error && <div className="notice notice-error">{error}</div>}
-          <div className="modal-actions"><button type="button" className="secondary-button" onClick={onClose}>Cancel</button><button className="primary-button" disabled={isSubmitting}>{isSubmitting ? 'Saving…' : 'Save product'}</button></div>
+          <div className="modal-actions"><button type="button" className="secondary-button" onClick={onClose}>Cancel</button><button className="primary-button" disabled={isSubmitting}>{isSubmitting ? 'Saving…' : product ? 'Update product' : 'Save product'}</button></div>
         </form>
       </section>
     </div>

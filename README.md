@@ -41,7 +41,7 @@ The backend is authoritative for authentication, permissions, product prices, an
 
 ## Verification
 
-Verified so far: `npm run build` passes; `npm test` passes 2 frontend UI tests; `backend/mvnw.cmd test` passes 11 backend tests (5 H2 app/security smoke, 2 origin-guard, and 4 inventory tests). Production MySQL migration and integration checks still require a provisioned database account.
+Verified so far: `npm run build` passes; `npm test` passes 3 frontend UI tests; `backend/mvnw.cmd test` passes 11 backend tests (5 H2 app/security smoke, 2 origin-guard, and 4 inventory tests). Production MySQL migration and integration checks still require a provisioned database account.
 
 ## Obsidian
 

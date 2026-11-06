@@ -28,7 +28,7 @@ status: active
 - Deployment: [[07 - Deployment/Deployment Guide]]
 
 ## Verified environment
-- Node.js 24.13.0 / npm 11.12.1; frontend build and 2 UI tests pass
+- Node.js 24.13.0 / npm 11.12.1; frontend build and 3 UI tests pass
 - Java 21.0.11 / Maven Wrapper 3.9.16; backend compiles and 11 tests pass (H2 smoke, origin guard, inventory)
 - AMPPS MySQL 8.0.45; port 3306 listens locally; app credentials are not provisioned
 - AMPPS phpMyAdmin uses cookie authentication

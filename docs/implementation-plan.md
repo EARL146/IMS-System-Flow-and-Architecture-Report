@@ -28,7 +28,7 @@ tags: [ims, planning, assessment]
 
 ## Current implementation status
 
-- Implemented code: responsive storefront/catalog, staff app shell, product and category management, warehouse management, dashboard, stock adjustments and ledger history, customer registration/login, JWT access tokens, rotating refresh sessions, owner bootstrap, DTO validation, common errors, and OpenAPI.
+- Implemented code: responsive storefront/catalog, staff app shell, product create/edit/archive and category management, warehouse management, dashboard, stock adjustments and ledger history, customer registration/login, JWT access tokens, rotating refresh sessions, owner bootstrap, DTO validation, common errors, and OpenAPI.
 - Inventory integrity includes locked balance rows, non-negative checks, one database transaction for balance/movement writes, and a unique-key reservation that makes concurrent retries replay the original adjustment or reject a changed payload.
 - Cookie refresh/logout requests require an exact allowed Origin; refresh cookies are HttpOnly and SameSite=Strict.
 - Verified: Vite production build succeeds with 2 UI tests passing; Maven backend build succeeds with 11 tests passing (5 H2 app/security smoke, 2 origin guard, 4 inventory).
