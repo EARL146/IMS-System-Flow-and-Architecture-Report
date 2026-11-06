@@ -12,6 +12,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.ColumnDefault;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -59,6 +60,7 @@ public class InventoryMovement {
     @Column(name = "reference_id", length = 80)
     private String referenceId;
 
+    @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "occurred_at", nullable = false, insertable = false, updatable = false)
     private Instant occurredAt;
 
@@ -75,15 +77,34 @@ public class InventoryMovement {
             String idempotencyKey,
             String reason
     ) {
+        this(product, warehouse, actor, "ADJUSTMENT", quantityDelta, quantityBefore, quantityAfter,
+                idempotencyKey, reason, null, null);
+    }
+
+    public InventoryMovement(
+            Product product,
+            Warehouse warehouse,
+            AppUser actor,
+            String movementType,
+            BigDecimal quantityDelta,
+            BigDecimal quantityBefore,
+            BigDecimal quantityAfter,
+            String idempotencyKey,
+            String reason,
+            String referenceType,
+            String referenceId
+    ) {
         this.product = product;
         this.warehouse = warehouse;
         this.actor = actor;
-        this.movementType = "ADJUSTMENT";
+        this.movementType = movementType;
         this.quantityDelta = quantityDelta;
         this.quantityBefore = quantityBefore;
         this.quantityAfter = quantityAfter;
         this.idempotencyKey = idempotencyKey;
         this.reason = reason;
+        this.referenceType = referenceType;
+        this.referenceId = referenceId;
     }
 
     public Long getId() {
@@ -120,6 +141,14 @@ public class InventoryMovement {
 
     public String getReason() {
         return reason;
+    }
+
+    public String getReferenceType() {
+        return referenceType;
+    }
+
+    public String getReferenceId() {
+        return referenceId;
     }
 
     public Instant getOccurredAt() {

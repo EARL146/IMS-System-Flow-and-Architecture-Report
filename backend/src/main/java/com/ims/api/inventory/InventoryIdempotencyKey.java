@@ -4,6 +4,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.ColumnDefault;
 
 import java.time.Instant;
 
@@ -14,6 +15,7 @@ public class InventoryIdempotencyKey {
     @Column(name = "idempotency_key", nullable = false, length = 36, columnDefinition = "char(36)")
     private String idempotencyKey;
 
+    @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;
 

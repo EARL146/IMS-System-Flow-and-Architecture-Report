@@ -16,4 +16,4 @@ status: active
 **Decision:** Record each movement and maintain lockable balance rows. **Reason:** History, reconciliation, concurrency control, and current-stock reads need explicit support.
 
 ## Keep notes Obsidian-compatible in the repository
-**Decision:** Prepare Markdown here until the intended vault path is supplied. **Reason:** Multiple unrelated registered vaults exist; do not write into an unrelated vault.
+**Decision:** Keep the IMS notes in `docs/obsidian/Inventory Management System/` as a self-contained Obsidian folder. **Reason:** The notes are immediately available without requiring a path to an existing vault.

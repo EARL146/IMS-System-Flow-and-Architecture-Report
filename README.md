@@ -41,8 +41,8 @@ The backend is authoritative for authentication, permissions, product prices, an
 
 ## Verification
 
-Verified so far: `npm run build` passes; `npm test` passes 3 frontend UI tests; `backend/mvnw.cmd test` passes 11 backend tests (5 H2 app/security smoke, 2 origin-guard, and 4 inventory tests). Production MySQL migration and integration checks still require a provisioned database account.
+Verified so far: `npm run build` passes; `npm test` passes 6 frontend UI tests; `backend/mvnw.cmd test` passes 14 backend tests (6 H2 application/security smoke, 2 origin-guard, 4 inventory, and 2 purchase-receiving workflow tests). Production MySQL migration and integration checks still require a provisioned database account.
 
 ## Obsidian
 
-Obsidian-formatted Markdown notes are maintained in `docs/obsidian/Inventory Management System/`. To use them, choose **Open folder as vault** in Obsidian and select that folder. They have not been copied into an existing vault.
+Obsidian-formatted Markdown notes are maintained in `docs/obsidian/Inventory Management System/`. Open that folder in Obsidian with **Open folder as vault**; you do not need to select or change one of your existing vaults. See [the Obsidian quick start](docs/obsidian/Inventory%20Management%20System/00%20-%20Project%20Overview/Obsidian%20Quick%20Start.md).

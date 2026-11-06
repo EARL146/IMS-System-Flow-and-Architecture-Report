@@ -1,12 +1,14 @@
-import { Boxes, ChartNoAxesCombined, ClipboardList, LayoutDashboard, LogOut, Warehouse } from 'lucide-react'
+import { Boxes, ChartNoAxesCombined, ClipboardList, LayoutDashboard, LogOut, PackageCheck, Truck, Warehouse } from 'lucide-react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 
 const navItems = [
-  { to: '/admin', label: 'Overview', icon: LayoutDashboard, end: true },
-  { to: '/admin/products', label: 'Products', icon: Boxes },
-  { to: '/admin/inventory', label: 'Inventory', icon: ClipboardList },
-  { to: '/admin/warehouses', label: 'Warehouses', icon: Warehouse },
+  { to: '/admin', label: 'Overview', icon: LayoutDashboard, end: true, roles: ['OWNER', 'ADMIN'] },
+  { to: '/admin/products', label: 'Products', icon: Boxes, roles: ['OWNER', 'ADMIN'] },
+  { to: '/admin/inventory', label: 'Inventory', icon: ClipboardList, roles: ['OWNER', 'ADMIN', 'INVENTORY_MANAGER'] },
+  { to: '/admin/warehouses', label: 'Warehouses', icon: Warehouse, roles: ['OWNER', 'ADMIN'] },
+  { to: '/admin/suppliers', label: 'Suppliers', icon: Truck, roles: ['OWNER', 'ADMIN', 'PURCHASING_OFFICER'] },
+  { to: '/admin/purchasing', label: 'Purchasing', icon: PackageCheck, roles: ['OWNER', 'ADMIN', 'PURCHASING_OFFICER', 'WAREHOUSE_STAFF', 'INVENTORY_MANAGER'] },
 ]
 
 export function AdminLayout() {
@@ -27,7 +29,7 @@ export function AdminLayout() {
         </NavLink>
         <div className="sidebar-label">WORKSPACE</div>
         <nav className="admin-nav" aria-label="Admin navigation">
-          {navItems.map(({ to, label, icon: Icon, end }) => (
+          {navItems.filter(({ roles }) => user?.roles.some((role) => roles.includes(role))).map(({ to, label, icon: Icon, end }) => (
             <NavLink key={to} to={to} end={end} className={({ isActive }) => 'admin-nav-link ' + (isActive ? 'active' : '')}>
               <Icon size={18} strokeWidth={1.8} /> {label}
             </NavLink>
@@ -35,8 +37,8 @@ export function AdminLayout() {
         </nav>
         <div className="sidebar-pending">
           <span className="pending-icon"><ChartNoAxesCombined size={17} /></span>
-          <strong>More workflows ahead</strong>
-          <p>Purchasing, sales, returns and reports are scheduled for later phases.</p>
+          <strong>Purchasing is live</strong>
+          <p>Record supplier orders, approvals and partial goods receipts.</p>
         </div>
         <button className="sidebar-signout" onClick={() => void signOut()}><LogOut size={17} /> Sign out</button>
       </aside>

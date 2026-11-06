@@ -11,12 +11,16 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import jakarta.persistence.Version;
 
 import java.math.BigDecimal;
 
 @Entity
-@Table(name = "inventory_balances")
+@Table(name = "inventory_balances", uniqueConstraints = {
+        @UniqueConstraint(name = "uq_inventory_balance_product_warehouse",
+                columnNames = {"product_id", "warehouse_id"})
+})
 public class InventoryBalance {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

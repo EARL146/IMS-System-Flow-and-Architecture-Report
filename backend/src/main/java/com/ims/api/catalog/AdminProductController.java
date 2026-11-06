@@ -31,6 +31,7 @@ public class AdminProductController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('OWNER','ADMIN','PURCHASING_OFFICER')")
     public PageResponse<ProductDtos.AdminProductResponse> list(
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "50") @Min(1) @Max(100) int size) {
@@ -38,6 +39,7 @@ public class AdminProductController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('OWNER','ADMIN','PURCHASING_OFFICER')")
     public ProductDtos.AdminProductResponse get(@PathVariable long id) {
         return products.getAdmin(id);
     }

@@ -27,6 +27,7 @@ public class WarehouseController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('OWNER','ADMIN','PURCHASING_OFFICER')")
     public List<WarehouseResponse> list() {
         return warehouses.findAllByActiveTrueOrderByNameAsc().stream().map(WarehouseResponse::from).toList();
     }

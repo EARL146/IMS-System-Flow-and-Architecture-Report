@@ -4,6 +4,7 @@ import com.ims.api.auth.AppUser;
 import com.ims.api.auth.AppUserRepository;
 import com.ims.api.catalog.Product;
 import com.ims.api.catalog.ProductRepository;
+import com.ims.api.catalog.TrackingType;
 import com.ims.api.common.ApiException;
 import com.ims.api.warehouse.Warehouse;
 import com.ims.api.warehouse.WarehouseRepository;
@@ -15,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 public class InventoryService {
@@ -108,5 +110,54 @@ public class InventoryService {
         InventoryMovement movement = new InventoryMovement(
                 product, warehouse, actor, delta, before, after, idempotencyKey, request.reason().trim());
         return InventoryDtos.MovementResponse.from(movements.save(movement));
+    }
+
+    @Transactional
+    public void receivePurchaseOrderStock(
+            long productId,
+            long warehouseId,
+            BigDecimal quantity,
+            String actorEmail,
+            String idempotencyKey,
+            String purchaseOrderNumber,
+            String goodsReceiptId
+    ) {
+        if (quantity.signum() <= 0 || quantity.stripTrailingZeros().scale() > 3) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Received quantity must be positive with at most three decimal places");
+        }
+
+        Product product = products.findById(productId)
+                .orElseThrow(() -> ApiException.notFound("Product not found"));
+        Warehouse warehouse = warehouses.findById(warehouseId)
+                .orElseThrow(() -> ApiException.notFound("Warehouse not found"));
+        if (product.getTrackingType() == TrackingType.NONE) return;
+
+        String reason = "Goods receipt for purchase order " + purchaseOrderNumber;
+        if (idempotencyKeys.reserveIfAbsent(idempotencyKey) == 0) {
+            InventoryMovement movement = movements.findByIdempotencyKey(idempotencyKey)
+                    .orElseThrow(() -> new IllegalStateException("Inventory idempotency reservation has no movement"));
+            boolean sameRequest = movement.getMovementType().equals("PURCHASE_RECEIPT")
+                    && movement.getProduct().getId().equals(productId)
+                    && movement.getWarehouse().getId().equals(warehouseId)
+                    && movement.getQuantityDelta().compareTo(quantity) == 0
+                    && Objects.equals(movement.getReferenceId(), goodsReceiptId);
+            if (!sameRequest) {
+                throw ApiException.conflict("Inventory idempotency key was already used for a different movement");
+            }
+            return;
+        }
+
+        balances.ensureExists(productId, warehouseId);
+        InventoryBalance balance = balances.findForUpdate(productId, warehouseId)
+                .orElseThrow(() -> new IllegalStateException("Inventory balance could not be locked"));
+        BigDecimal before = balance.getOnHandQuantity();
+        BigDecimal after = before.add(quantity);
+        AppUser actor = users.findByEmailIgnoreCase(actorEmail)
+                .orElseThrow(ApiException::unauthorized);
+
+        balance.setOnHandQuantity(after);
+        balances.save(balance);
+        movements.save(new InventoryMovement(product, warehouse, actor, "PURCHASE_RECEIPT", quantity,
+                before, after, idempotencyKey, reason, "GOODS_RECEIPT", goodsReceiptId));
     }
 }
