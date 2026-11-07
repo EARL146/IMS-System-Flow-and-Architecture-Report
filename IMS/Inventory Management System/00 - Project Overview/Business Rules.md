@@ -13,7 +13,8 @@ status: in-progress
 - Transfers debit and credit warehouses in one database transaction.
 - A purchase increases stock only through authorized goods receiving.
 - Returned stock is inspected; refunding does not automatically make it sellable.
-- Online payments are marked paid only after verified provider confirmation.
+- Manual transfer is marked paid only after an authorized staff member records a full-amount verification; COD collection can be recorded only after delivery. The system does not receive provider confirmation.
+- Customer orders follow the configured fulfillment transitions. Reserved stock is consumed once when delivery is recorded; a manual-transfer order cannot ship or be prepared for pickup until payment is verified.
 - Monetary values use fixed-precision decimals.
 
-Checkout currently supports cash on delivery (`UNPAID`) and manual transfer (`AWAITING_VERIFICATION`). There is no payment-provider integration or endpoint that marks a customer order paid. Tax and shipping are flat configurable checkout values and default to zero. Rules remain targets until implementation and tests verify them.
+Checkout supports cash on delivery (`UNPAID`) and manual transfer (`AWAITING_VERIFICATION`). Staff payment records are idempotent and auditable. There is no payment-provider integration. Tax and shipping are flat configurable checkout values and default to zero. Rules remain targets until implementation and tests verify them.

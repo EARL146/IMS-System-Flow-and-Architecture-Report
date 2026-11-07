@@ -13,8 +13,8 @@ status: active
 5. [ ] Finish authentication hardening, permission RBAC, object scopes, audit logging, and abuse protection.
 6. [~] Product/category/warehouse and inventory ledger slices exist; extend product tracking/editor and verify against MySQL.
 7. [~] Supplier records, purchase approvals, and partial receiving implemented; supplier returns remain.
-8. [~] Live catalog, customer registration/login, saved addresses, persistent cart, server-priced checkout, stock reservation, order history/detail, and pending cancellation are implemented; order fulfillment, payment verification, and returns remain.
-9. [ ] Staff order fulfillment, POS, sales, returns, inspection, and refunds.
+8. [~] Live catalog, customer registration/login, saved addresses, persistent cart, server-priced checkout, stock reservation, order history/status tracking, pending cancellation, and auditable staff-recorded manual payment verification are implemented; returns remain.
+9. [~] Staff order fulfillment and once-only stock deduction at delivery are implemented; POS, provider integrations, sales, returns, inspection, and refunds remain.
 10. [ ] Reports, support, notifications, exports, security tests, deployment, backup, and recovery.
 
-`[~]` means partially implemented. A phase is complete only after its implementation is verified. See [[../../implementation-plan]] and [[../05 - Development/Development Progress]].
+`[~]` means partially implemented. A phase is complete only after its implementation is verified. See [[Implementation Plan]] and [[../05 - Development/Development Progress]].

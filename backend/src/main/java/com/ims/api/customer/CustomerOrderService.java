@@ -31,6 +31,7 @@ public class CustomerOrderService {
     private static final BigDecimal ZERO_MONEY = BigDecimal.ZERO.setScale(4);
 
     private final CustomerOrderRepository orders;
+    private final CustomerOrderStatusHistoryRepository statusHistory;
     private final CustomerAddressRepository addresses;
     private final CartItemRepository cartItems;
     private final CheckoutIdempotencyKeyRepository checkoutKeys;
@@ -42,6 +43,7 @@ public class CustomerOrderService {
 
     public CustomerOrderService(
             CustomerOrderRepository orders,
+            CustomerOrderStatusHistoryRepository statusHistory,
             CustomerAddressRepository addresses,
             CartItemRepository cartItems,
             CheckoutIdempotencyKeyRepository checkoutKeys,
@@ -52,6 +54,7 @@ public class CustomerOrderService {
             Clock clock
     ) {
         this.orders = orders;
+        this.statusHistory = statusHistory;
         this.addresses = addresses;
         this.cartItems = cartItems;
         this.checkoutKeys = checkoutKeys;
@@ -122,6 +125,8 @@ public class CustomerOrderService {
                 subtotal, taxAmount, shippingAmount, discountAmount, total, address, clean(request.notes()));
         orderLines.forEach(order::addItem);
         CustomerOrder saved = orders.saveAndFlush(order);
+        statusHistory.save(new CustomerOrderStatusHistory(saved, null, CustomerOrderStatus.PENDING,
+                customer, "Order placed"));
 
         for (CustomerOrderItem item : saved.getItems()) {
             inventory.reserveCustomerOrderStock(
@@ -150,16 +155,27 @@ public class CustomerOrderService {
         return CustomerDtos.OrderResponse.from(loadOwnedOrder(orderId, customer.getId()));
     }
 
+    @Transactional(readOnly = true)
+    public java.util.List<CustomerDtos.OrderStatusHistoryResponse> history(long orderId, String email) {
+        AppUser customer = requireUser(email);
+        loadOwnedOrder(orderId, customer.getId());
+        return statusHistory.findAllByCustomerOrder_IdOrderByOccurredAtAscIdAsc(orderId).stream()
+                .map(CustomerDtos.OrderStatusHistoryResponse::from).toList();
+    }
+
     @Transactional
     public CustomerDtos.OrderResponse cancel(long orderId, String email) {
         AppUser customer = requireUser(email);
         CustomerOrder order = orders.findDetailedForUpdateByIdAndCustomer(orderId, customer.getId())
                 .orElseThrow(() -> ApiException.notFound("Order not found"));
+        CustomerOrderStatus previousStatus = order.getStatus();
         try {
             order.cancel(clock.instant());
         } catch (IllegalStateException exception) {
             throw ApiException.conflict(exception.getMessage());
         }
+        statusHistory.save(new CustomerOrderStatusHistory(order, previousStatus, CustomerOrderStatus.CANCELLED,
+                customer, "Cancelled by customer"));
 
         for (CustomerOrderItem item : order.getItems()) {
             inventory.releaseCustomerOrderStock(

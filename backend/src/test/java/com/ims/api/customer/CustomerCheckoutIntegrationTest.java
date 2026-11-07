@@ -33,7 +33,10 @@ class CustomerCheckoutIntegrationTest {
     @Autowired private CustomerAddressService addresses;
     @Autowired private CartService cart;
     @Autowired private CustomerOrderService orders;
+    @Autowired private AdminCustomerOrderService adminOrders;
     @Autowired private CustomerOrderRepository customerOrders;
+    @Autowired private CustomerOrderStatusHistoryRepository statusHistory;
+    @Autowired private CustomerPaymentVerificationRepository paymentVerifications;
     @Autowired private AppUserRepository users;
     @Autowired private RoleRepository roles;
     @Autowired private ProductRepository products;
@@ -43,6 +46,7 @@ class CustomerCheckoutIntegrationTest {
 
     private String customerEmail;
     private String otherCustomerEmail;
+    private String staffEmail;
     private Product product;
     private Warehouse warehouse;
     private CustomerDtos.AddressResponse address;
@@ -54,8 +58,10 @@ class CustomerCheckoutIntegrationTest {
                 .orElseGet(() -> roles.saveAndFlush(new Role("CUSTOMER", "Customer")));
         customerEmail = "customer-" + suffix + "@example.test";
         otherCustomerEmail = "other-" + suffix + "@example.test";
+        staffEmail = "staff-" + suffix + "@example.test";
         saveCustomer(customerEmail, customerRole);
         saveCustomer(otherCustomerEmail, customerRole);
+        users.saveAndFlush(new AppUser(staffEmail, "encoded-test-password", "Staff Tester"));
 
         warehouse = warehouses.saveAndFlush(new Warehouse("CWH-" + suffix, "Customer Warehouse " + suffix));
         product = products.saveAndFlush(new Product("CSKU-" + suffix, null, "Customer item " + suffix,
@@ -120,6 +126,79 @@ class CustomerCheckoutIntegrationTest {
 
         assertEquals(PaymentStatus.AWAITING_VERIFICATION, created.paymentStatus());
         assertNotEquals(PaymentStatus.PAID, created.paymentStatus());
+    }
+
+    @Test
+    void deliveryConsumesReservedStockOnceAndCashCollectionIsAudited() {
+        cart.add(customerEmail, new CustomerDtos.AddCartItemRequest(product.getId(), new BigDecimal("3.000")));
+        CustomerDtos.OrderResponse created = orders.checkout(customerEmail, new CustomerDtos.CheckoutRequest(
+                UUID.randomUUID(), address.id(), warehouse.getId(), PaymentMethod.CASH_ON_DELIVERY, null));
+
+        transition(created.id(), CustomerOrderStatus.CONFIRMED);
+        transition(created.id(), CustomerOrderStatus.PROCESSING);
+        transition(created.id(), CustomerOrderStatus.SHIPPED);
+        CustomerDtos.OrderResponse delivered = transition(created.id(), CustomerOrderStatus.DELIVERED);
+        assertEquals(PaymentStatus.UNPAID, delivered.paymentStatus());
+        assertEquals(0, new BigDecimal("2.000").compareTo(stock().getOnHandQuantity()));
+        assertEquals(0, BigDecimal.ZERO.compareTo(stock().getReservedQuantity()));
+        assertEquals(1, movements.findAll().stream()
+                .filter(movement -> movement.getMovementType().equals("SALE_FULFILLMENT")
+                        && created.orderNumber().equals(movement.getReferenceId())).count());
+
+        adminOrders.transition(created.id(), new OrderManagementDtos.StatusRequest(
+                CustomerOrderStatus.DELIVERED, "duplicate callback"), staffEmail);
+        assertEquals(1, movements.findAll().stream()
+                .filter(movement -> movement.getMovementType().equals("SALE_FULFILLMENT")
+                        && created.orderNumber().equals(movement.getReferenceId())).count());
+
+        UUID paymentKey = UUID.randomUUID();
+        var paymentRequest = new OrderManagementDtos.PaymentVerificationRequest(
+                paymentKey, delivered.total(), "CASH-001", "Cash received at delivery");
+        var verification = adminOrders.verifyPayment(created.id(), paymentRequest, staffEmail);
+        var replay = adminOrders.verifyPayment(created.id(), paymentRequest, staffEmail);
+        assertEquals(verification.id(), replay.id());
+        assertEquals(verification.id(), paymentVerifications.findByCustomerOrder_Id(created.id())
+                .orElseThrow().getId());
+        assertEquals(PaymentStatus.PAID, adminOrders.get(created.id()).paymentStatus());
+        assertEquals(5, statusHistory.findAllByCustomerOrder_IdOrderByOccurredAtAscIdAsc(created.id()).size());
+    }
+
+    @Test
+    void manualTransferMustBeVerifiedBeforeShippingAndUsesFullOrderAmount() {
+        cart.add(customerEmail, new CustomerDtos.AddCartItemRequest(product.getId(), new BigDecimal("1.000")));
+        CustomerDtos.OrderResponse created = orders.checkout(customerEmail, new CustomerDtos.CheckoutRequest(
+                UUID.randomUUID(), address.id(), warehouse.getId(), PaymentMethod.MANUAL_TRANSFER, null));
+        transition(created.id(), CustomerOrderStatus.CONFIRMED);
+        transition(created.id(), CustomerOrderStatus.PROCESSING);
+
+        assertThrows(ApiException.class, () -> transition(created.id(), CustomerOrderStatus.SHIPPED));
+        assertEquals(PaymentStatus.AWAITING_VERIFICATION, adminOrders.get(created.id()).paymentStatus());
+        assertThrows(ApiException.class, () -> adminOrders.verifyPayment(created.id(),
+                new OrderManagementDtos.PaymentVerificationRequest(UUID.randomUUID(),
+                        created.total().subtract(new BigDecimal("1.0000")), "BANK-001", null), staffEmail));
+
+        var request = new OrderManagementDtos.PaymentVerificationRequest(
+                UUID.randomUUID(), created.total(), "BANK-001", "Matched against bank statement");
+        adminOrders.verifyPayment(created.id(), request, staffEmail);
+        assertEquals(PaymentStatus.PAID, adminOrders.get(created.id()).paymentStatus());
+        transition(created.id(), CustomerOrderStatus.SHIPPED);
+        transition(created.id(), CustomerOrderStatus.DELIVERED);
+        assertEquals(0, new BigDecimal("4.000").compareTo(stock().getOnHandQuantity()));
+        assertEquals(0, BigDecimal.ZERO.compareTo(stock().getReservedQuantity()));
+    }
+
+    @Test
+    void customerOrderHistoryIsOwnershipScoped() {
+        cart.add(customerEmail, new CustomerDtos.AddCartItemRequest(product.getId(), new BigDecimal("1.000")));
+        CustomerDtos.OrderResponse created = orders.checkout(customerEmail, new CustomerDtos.CheckoutRequest(
+                UUID.randomUUID(), address.id(), warehouse.getId(), PaymentMethod.CASH_ON_DELIVERY, null));
+
+        assertEquals(1, orders.history(created.id(), customerEmail).size());
+        assertThrows(ApiException.class, () -> orders.history(created.id(), otherCustomerEmail));
+    }
+
+    private CustomerDtos.OrderResponse transition(long orderId, CustomerOrderStatus status) {
+        return adminOrders.transition(orderId, new OrderManagementDtos.StatusRequest(status, null), staffEmail);
     }
 
     private void saveCustomer(String email, Role role) {

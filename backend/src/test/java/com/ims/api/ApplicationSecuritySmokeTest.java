@@ -90,4 +90,37 @@ class ApplicationSecuritySmokeTest {
         mvc.perform(get("/api/v1/admin/suppliers").param("page", "0").param("size", "10"))
                 .andExpect(status().isOk());
     }
+
+    @Test
+    @WithMockUser(roles = "CUSTOMER_SUPPORT")
+    void customerSupportCanReadTheStaffOrderQueue() throws Exception {
+        mvc.perform(get("/api/v1/admin/customer-orders"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray());
+    }
+
+    @Test
+    @WithMockUser(roles = "INVENTORY_MANAGER")
+    void unrelatedStaffRoleCannotReadTheCustomerOrderQueue() throws Exception {
+        mvc.perform(get("/api/v1/admin/customer-orders"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "ACCOUNTANT")
+    void accountantCannotChangeFulfillmentStatus() throws Exception {
+        mvc.perform(post("/api/v1/admin/customer-orders/1/status")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"CONFIRMED\"}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "WAREHOUSE_STAFF")
+    void warehouseStaffCannotRecordPayments() throws Exception {
+        mvc.perform(post("/api/v1/admin/customer-orders/1/payments/verify")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"idempotencyKey\":\"4bb9d55d-1cc6-4892-a2d8-9735d22cedba\",\"amount\":1}"))
+                .andExpect(status().isForbidden());
+    }
 }

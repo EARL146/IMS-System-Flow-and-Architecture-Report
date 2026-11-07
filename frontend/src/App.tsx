@@ -5,6 +5,7 @@ import { AdminLogin } from './pages/AdminLogin'
 import { DashboardPage } from './pages/DashboardPage'
 import { InventoryPage } from './pages/InventoryPage'
 import { PurchaseOrdersPage } from './pages/PurchaseOrdersPage'
+import { CustomerOrdersAdminPage } from './pages/CustomerOrdersAdminPage'
 import { ProductsPage } from './pages/ProductsPage'
 import { SuppliersPage } from './pages/SuppliersPage'
 import { Storefront } from './pages/Storefront'
@@ -24,7 +25,7 @@ function RequireStaff({ children }: { children: React.ReactNode }) {
   if (loading) return <div className="page-state">Restoring your session…</div>
   if (!user) return <Navigate to="/admin/login" replace />
   const canAccessStaffArea = user.roles.some((role) =>
-    ['OWNER', 'ADMIN', 'INVENTORY_MANAGER', 'PURCHASING_OFFICER', 'WAREHOUSE_STAFF'].includes(role),
+    ['OWNER', 'ADMIN', 'INVENTORY_MANAGER', 'PURCHASING_OFFICER', 'WAREHOUSE_STAFF', 'CUSTOMER_SUPPORT', 'ACCOUNTANT', 'CASHIER'].includes(role),
   )
   if (!canAccessStaffArea) return <div className="page-state">This account does not have staff access.</div>
   return children
@@ -74,6 +75,7 @@ export default function App() {
         <Route path="warehouses" element={<RequireRoles roles={['OWNER', 'ADMIN']}><WarehousesPage /></RequireRoles>} />
         <Route path="suppliers" element={<RequireRoles roles={['OWNER', 'ADMIN', 'PURCHASING_OFFICER']}><SuppliersPage /></RequireRoles>} />
         <Route path="purchasing" element={<RequireRoles roles={['OWNER', 'ADMIN', 'PURCHASING_OFFICER', 'WAREHOUSE_STAFF', 'INVENTORY_MANAGER']}><PurchaseOrdersPage /></RequireRoles>} />
+        <Route path="customer-orders" element={<RequireRoles roles={['OWNER', 'ADMIN', 'WAREHOUSE_STAFF', 'CUSTOMER_SUPPORT', 'ACCOUNTANT', 'CASHIER']}><CustomerOrdersAdminPage /></RequireRoles>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

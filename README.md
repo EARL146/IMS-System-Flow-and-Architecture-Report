@@ -4,7 +4,7 @@ A staged full-stack inventory and retail management platform. The implementation
 
 ## Current status
 
-Implemented vertical slices include product/category/warehouse administration, stock adjustments and ledger history, suppliers and purchase receiving, plus a customer storefront with registration/login, saved addresses, persistent cart, server-priced checkout, stock reservations, order history/detail, and pending-order cancellation. POS, staff order fulfillment, returns/refunds, online payment verification, business scoping, and several other requested modules remain in progress. See [the implementation plan](docs/implementation-plan.md) and Obsidian notes for the verified scope.
+Implemented vertical slices include product/category/warehouse administration, stock adjustments and ledger history, suppliers and purchase receiving, plus a customer storefront with registration/login, saved addresses, persistent cart, server-priced checkout, stock reservations, order history/status tracking, staff fulfillment, and auditable manual payment verification. POS, returns/refunds, online payment-provider integration, business scoping, and several other requested modules remain in progress. See [the implementation plan](docs/implementation-plan.md) and Obsidian notes for the verified scope.
 
 ## Planned architecture
 
@@ -33,7 +33,7 @@ Keep `.env` out of Git and do not use production credentials for local developme
 
 ## API and database
 
-The API uses `/api/v1`. Flyway owns schema changes; Hibernate schema auto-update is disabled. Inventory changes are represented as ledger movements alongside current balance rows, including separate reserved-stock deltas. Customer checkout refreshes prices on the server, checks available inventory in a transaction, reserves stock, snapshots the delivery address, and records an idempotency key. `IMS_CHECKOUT_TAX_RATE`, `IMS_CHECKOUT_SHIPPING_AMOUNT`, and `IMS_CHECKOUT_CURRENCY_CODE` configure the current flat checkout calculation; tax and shipping default to zero until configured. See the API and database notes for route and migration details.
+The API uses `/api/v1`. Flyway owns schema changes; Hibernate schema auto-update is disabled. Inventory changes are represented as ledger movements alongside current balance rows, including separate reserved-stock deltas. Customer checkout refreshes prices on the server, checks available inventory in a transaction, reserves stock, snapshots the delivery address, and records an idempotency key. Staff fulfillment consumes reserved stock once at delivery. Staff can record a full manual transfer verification or cash-on-delivery collection; no payment provider is integrated. `IMS_CHECKOUT_TAX_RATE`, `IMS_CHECKOUT_SHIPPING_AMOUNT`, and `IMS_CHECKOUT_CURRENCY_CODE` configure the current flat checkout calculation; tax and shipping default to zero until configured. See the API and database notes for route and migration details.
 
 ## Security
 
@@ -41,7 +41,7 @@ The backend is authoritative for authentication, permissions, product prices, an
 
 ## Verification
 
-Verified: `npm run build` passes; `npm test -- --pool=threads --maxWorkers=1 --no-file-parallelism --no-isolate --testTimeout=20000 --hookTimeout=30000 --reporter=dot` passes 8 frontend UI tests; `backend/mvnw.cmd -B test` passes 18 backend tests (8 application/security smoke, 2 origin-guard, 2 customer checkout, 4 inventory, and 2 purchase-receiving workflow tests). Oxlint exits successfully with five existing React warnings. Production MySQL migration and integration checks still require a provisioned database account.
+Verified: `npm run build` passes; Vitest passes 11 frontend UI tests; `backend/mvnw.cmd -B test` passes 25 backend tests (12 application/security smoke, 2 origin-guard, 5 customer commerce, 4 inventory, and 2 purchase-receiving workflow tests). Oxlint exits successfully with five existing React warnings. Production MySQL migration and integration checks still require a provisioned database account.
 
 ## Obsidian
 

@@ -119,6 +119,13 @@ public class CustomerController {
         return orders.get(id, authentication.getName());
     }
 
+    @GetMapping("/orders/{id}/history")
+    public List<CustomerDtos.OrderStatusHistoryResponse> orderHistory(
+            @PathVariable @Min(1) long id,
+            Authentication authentication) {
+        return orders.history(id, authentication.getName());
+    }
+
     @PostMapping("/orders/{id}/cancel")
     public CustomerDtos.OrderResponse cancelOrder(
             @PathVariable @Min(1) long id,

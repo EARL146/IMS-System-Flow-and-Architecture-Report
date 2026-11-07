@@ -100,7 +100,7 @@ public final class CustomerDtos {
     }
 
     public record OrderResponse(
-            Long id, String orderNumber, Long warehouseId, String warehouseName,
+            Long id, String orderNumber, String customerEmail, Long warehouseId, String warehouseName,
             CustomerOrderStatus status, PaymentMethod paymentMethod, PaymentStatus paymentStatus,
             String currencyCode, BigDecimal subtotal, BigDecimal taxAmount,
             BigDecimal shippingAmount, BigDecimal discountAmount, BigDecimal total,
@@ -110,7 +110,8 @@ public final class CustomerDtos {
             Instant createdAt, List<OrderItemResponse> items
     ) {
         static OrderResponse from(CustomerOrder order) {
-            return new OrderResponse(order.getId(), order.getOrderNumber(), order.getWarehouse().getId(),
+            return new OrderResponse(order.getId(), order.getOrderNumber(), order.getCustomer().getEmail(),
+                    order.getWarehouse().getId(),
                     order.getWarehouse().getName(), order.getStatus(), order.getPaymentMethod(),
                     order.getPaymentStatus(), order.getCurrencyCode(), order.getSubtotal(),
                     order.getTaxAmount(), order.getShippingAmount(), order.getDiscountAmount(),
@@ -119,6 +120,17 @@ public final class CustomerDtos {
                     order.getCity(), order.getRegion(), order.getPostalCode(), order.getCountryCode(),
                     order.getNotes(), order.getCancelledAt(), order.getCreatedAt(),
                     order.getItems().stream().map(OrderItemResponse::from).toList());
+        }
+    }
+
+    public record OrderStatusHistoryResponse(
+            Long id, CustomerOrderStatus fromStatus, CustomerOrderStatus toStatus,
+            String changedBy, String note, Instant occurredAt
+    ) {
+        static OrderStatusHistoryResponse from(CustomerOrderStatusHistory history) {
+            return new OrderStatusHistoryResponse(history.getId(), history.getFromStatus(),
+                    history.getToStatus(), history.getChangedBy().getFullName(),
+                    history.getNote(), history.getOccurredAt());
         }
     }
 

@@ -34,3 +34,11 @@ status: active
 - Current verification: frontend build passes with 8 UI tests; backend passes 18 tests. Oxlint passes with five existing warnings.
 - MySQL migrations remain unverified because the application database account has not been provisioned.
 - Confirmed the local Obsidian vault at `IMS/`; copied the project notes into `IMS/Inventory Management System/`, verified internal links, and excluded `.obsidian/` settings and the generated welcome note from Git.
+
+## 2026-11-07 — Staff fulfillment and payment verification
+- Added Flyway V4 status-history and payment-verification tables, including a history snapshot for existing orders.
+- Added row-locked customer-order transitions, staff status-history APIs, and owner-scoped customer history reads. Checkout does not offer pickup, so current staff transitions use the shipped/delivered path.
+- Delivery now consumes reserved and on-hand stock once per tracked order line and writes a `SALE_FULFILLMENT` ledger movement with a deterministic idempotency key.
+- Added a staff queue for order progress and an audit record for full-amount manual-transfer verification or COD cash collection. Manual-transfer orders cannot ship before staff verification; COD collection can be recorded only after delivery.
+- Added customer order timeline display and tests for delivery ledger integrity, idempotent payment replay, manual-transfer sequencing, and history ownership.
+- Current verification: 11 frontend tests pass, the production build passes, and all 25 backend tests pass. `git diff --check` passes. MySQL migration validation remains outstanding.

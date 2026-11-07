@@ -228,4 +228,39 @@ public class InventoryService {
                 "Reserved stock released for customer order " + orderNumber,
                 "CUSTOMER_ORDER", orderNumber, reservedAfter.subtract(reservedBefore)));
     }
+
+    @Transactional
+    public void fulfillCustomerOrderStock(
+            long productId,
+            long warehouseId,
+            BigDecimal quantity,
+            String actorEmail,
+            String idempotencyKey,
+            String orderNumber
+    ) {
+        Product product = products.findById(productId)
+                .orElseThrow(() -> ApiException.notFound("Product not found"));
+        if (product.getTrackingType() == TrackingType.NONE) return;
+        Warehouse warehouse = warehouses.findById(warehouseId)
+                .orElseThrow(() -> ApiException.notFound("Warehouse not found"));
+        InventoryBalance balance = balances.findForUpdate(productId, warehouseId)
+                .orElseThrow(() -> new IllegalStateException("Reserved stock balance could not be found"));
+        if (balance.getReservedQuantity().compareTo(quantity) < 0
+                || balance.getOnHandQuantity().compareTo(quantity) < 0) {
+            throw new IllegalStateException("Reserved stock is lower than the order quantity");
+        }
+
+        AppUser actor = users.findByEmailIgnoreCase(actorEmail)
+                .orElseThrow(ApiException::unauthorized);
+        BigDecimal onHandBefore = balance.getOnHandQuantity();
+        BigDecimal onHandAfter = onHandBefore.subtract(quantity);
+        BigDecimal reservedAfter = balance.getReservedQuantity().subtract(quantity);
+        balance.setOnHandQuantity(onHandAfter);
+        balance.setReservedQuantity(reservedAfter);
+        balances.save(balance);
+        movements.save(new InventoryMovement(product, warehouse, actor, "SALE_FULFILLMENT",
+                quantity.negate(), onHandBefore, onHandAfter, idempotencyKey,
+                "Customer order fulfilled " + orderNumber,
+                "CUSTOMER_ORDER", orderNumber, quantity.negate()));
+    }
 }

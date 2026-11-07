@@ -22,9 +22,13 @@ erDiagram
   APP_USER ||--o{ CUSTOMER_ORDER : places
   WAREHOUSE ||--o{ CUSTOMER_ORDER : fulfills
   CUSTOMER_ORDER ||--|{ CUSTOMER_ORDER_ITEM : contains
+  CUSTOMER_ORDER ||--o{ CUSTOMER_ORDER_STATUS_HISTORY : tracks
+  CUSTOMER_ORDER o|--o| CUSTOMER_PAYMENT_VERIFICATION : records
+  APP_USER ||--o{ CUSTOMER_ORDER_STATUS_HISTORY : changes
+  APP_USER ||--o{ CUSTOMER_PAYMENT_VERIFICATION : verifies
   PRODUCT ||--o{ CUSTOMER_ORDER_ITEM : snapshots
   APP_USER ||--o{ CHECKOUT_IDEMPOTENCY_KEY : reserves
   CUSTOMER_ORDER o|--o| CHECKOUT_IDEMPOTENCY_KEY : created_by
 ```
 
-These relationships match the authored V1-V3 migrations and JPA mappings. MySQL migration execution and schema validation remain unverified because no database account has been provisioned.
+These relationships match the authored V1-V4 migrations and JPA mappings. MySQL migration execution and schema validation remain unverified because no database account has been provisioned.

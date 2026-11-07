@@ -15,8 +15,8 @@ status: active
 
 ## Current results
 - Frontend production build: passed.
-- Frontend UI tests: 8 passed (catalog rendering/filtering and customer cart add, checkout details/idempotency/payment messaging, product validation/editing, supplier validation/creation, purchase-order draft creation, and warehouse-staff partial receipt submission).
-- Backend: 18 passed — 8 H2 application/security smoke tests, 2 origin-guard unit tests, 2 customer checkout integration tests, 4 inventory service unit tests, and 2 purchase-order receiving integration tests.
-- H2 smoke coverage includes public catalog paging, page-size limit validation, unauthenticated management rejection, customer-role allow/deny checks, and accepted/rejected refresh origins. Checkout integration coverage exercises server-side totals, reservation/release, same-key replay, changed-payload rejection, ownership, insufficient stock rollback, and manual-transfer awaiting-verification status. Flyway is disabled in this test profile.
+- Frontend UI tests: 11 passed, including catalog rendering/filtering, customer cart/checkout/order history, product/supplier/purchase forms, partial receiving, staff order fulfillment, and manual payment recording.
+- Backend: 25 passed — 12 H2 application/security smoke tests, 2 origin-guard unit tests, 5 customer commerce integration tests, 4 inventory service unit tests, and 2 purchase-order receiving integration tests.
+- H2 smoke coverage includes public catalog paging, page-size limit validation, unauthenticated management rejection, customer-role allow/deny checks, customer-order role gates, and accepted/rejected refresh origins. Commerce integration coverage exercises server-side totals, reservation/release, fulfillment stock deduction, same-key replay, changed-payload rejection, history ownership, insufficient-stock rollback, and payment workflow rules. Flyway is disabled in this test profile.
 - MySQL integration/migration and true multi-connection concurrency tests: not run; no application DB account is available. Purchasing reference reads are covered for a purchasing role; a full authorization matrix remains.
-- Oxlint exits successfully with five React warnings about synchronous state updates in effects and Fast Refresh exports; these are cleanup items, not test failures.
+- Oxlint exits successfully with five existing React warnings about synchronous state updates in effects and Fast Refresh exports; these are cleanup items, not test failures.

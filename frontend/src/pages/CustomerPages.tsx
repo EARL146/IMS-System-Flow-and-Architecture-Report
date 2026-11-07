@@ -4,6 +4,7 @@ import { Link, NavLink, Outlet, useNavigate, useParams } from 'react-router-dom'
 import { api, getErrorMessage } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import './customer.css'
+import './customer-order-history.css'
 
 interface PageResult<T> {
   content: T[]
@@ -105,6 +106,15 @@ interface CustomerOrder {
   cancelledAt: string | null
   createdAt: string
   items: OrderItem[]
+}
+
+interface OrderStatusHistory {
+  id: number
+  fromStatus: OrderStatus | null
+  toStatus: OrderStatus
+  changedBy: string
+  note: string | null
+  occurredAt: string
 }
 
 function money(value: number, currency = 'PHP') {
@@ -506,14 +516,23 @@ export function CustomerOrdersPage() {
 
 export function CustomerOrderDetailPage() {
   const [order, setOrder] = useState<CustomerOrder | null>(null)
+  const [history, setHistory] = useState<OrderStatusHistory[]>([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const { id: orderId } = useParams()
 
   useEffect(() => {
     let mounted = true
-    api.get<CustomerOrder>('/customer/orders/' + orderId)
-      .then(({ data }) => { if (mounted) setOrder(data) })
+    Promise.all([
+      api.get<CustomerOrder>('/customer/orders/' + orderId),
+      api.get<OrderStatusHistory[]>('/customer/orders/' + orderId + '/history'),
+    ])
+      .then(([orderResult, historyResult]) => {
+        if (mounted) {
+          setOrder(orderResult.data)
+          setHistory(historyResult.data)
+        }
+      })
       .catch((requestError: unknown) => { if (mounted) setError(getErrorMessage(requestError, 'The order could not be loaded.')) })
       .finally(() => { if (mounted) setLoading(false) })
     return () => { mounted = false }
@@ -521,17 +540,17 @@ export function CustomerOrderDetailPage() {
 
   if (loading) return <div className="customer-state">Loading order details…</div>
   if (error || !order) return <section className="customer-page"><div className="notice notice-error customer-notice">{error || 'Order not found.'}</div><Link to="/account/orders" className="secondary-button">Back to orders</Link></section>
-  return <OrderDetails order={order} />
+  return <OrderDetails order={order} history={history} />
 }
 
-function OrderDetails({ order }: { order: CustomerOrder }) {
+function OrderDetails({ order, history }: { order: CustomerOrder; history: OrderStatusHistory[] }) {
   const breakdown: Array<[string, number]> = [['Subtotal', order.subtotal], ['Tax', order.taxAmount], ['Delivery', order.shippingAmount], ['Discount', -order.discountAmount]]
   return (
     <section className="customer-page">
       <div className="page-title-row customer-title-row"><div><div className="eyebrow">ORDER DETAILS</div><h1>{order.orderNumber}</h1><p>Placed {new Date(order.createdAt).toLocaleString()}</p></div><Link to="/account/orders" className="secondary-button"><ClipboardList size={15} /> All orders</Link></div>
       <div className="order-detail-layout">
         <section className="panel order-detail-panel"><div className="panel-heading"><div><h2>Items</h2><p>{friendly(order.status)} · {friendly(order.paymentStatus)}</p></div></div><div className="customer-order-lines">{order.items.map((item) => <div className="customer-order-line" key={item.id}><span><strong>{item.productName}</strong><small>SKU {item.sku} · {item.quantity} {item.unitOfMeasure} × {money(item.unitPrice, order.currencyCode)}</small></span><strong>{money(item.lineTotal, order.currencyCode)}</strong></div>)}</div><div className="order-breakdown">{breakdown.map(([label, value]) => <div key={label}><span>{label}</span><span>{money(value, order.currencyCode)}</span></div>)}<div className="order-grand-total"><strong>Total</strong><strong>{money(order.total, order.currencyCode)}</strong></div></div></section>
-        <div className="order-detail-side"><section className="panel order-address-panel"><div className="panel-heading"><div><h2>Delivery address</h2><p>{order.addressLabel}</p></div></div><div className="order-address-copy"><strong>{order.recipientName}</strong><span>{order.recipientPhone}</span><span>{order.addressLine1}{order.addressLine2 ? ', ' + order.addressLine2 : ''}</span><span>{[order.city, order.region, order.postalCode, order.countryCode].filter(Boolean).join(', ')}</span></div></section><section className="panel order-address-panel"><div className="panel-heading"><div><h2>Payment and fulfillment</h2><p>{friendly(order.paymentMethod)}</p></div></div><div className="order-address-copy"><strong>{order.warehouseName}</strong><span>{paymentText(order.paymentMethod, order.paymentStatus)}</span>{order.notes && <span>Note: {order.notes}</span>}</div></section></div>
+        <div className="order-detail-side"><section className="panel order-address-panel"><div className="panel-heading"><div><h2>Delivery address</h2><p>{order.addressLabel}</p></div></div><div className="order-address-copy"><strong>{order.recipientName}</strong><span>{order.recipientPhone}</span><span>{order.addressLine1}{order.addressLine2 ? ', ' + order.addressLine2 : ''}</span><span>{[order.city, order.region, order.postalCode, order.countryCode].filter(Boolean).join(', ')}</span></div></section><section className="panel order-address-panel"><div className="panel-heading"><div><h2>Payment and fulfillment</h2><p>{friendly(order.paymentMethod)}</p></div></div><div className="order-address-copy"><strong>{order.warehouseName}</strong><span>{paymentText(order.paymentMethod, order.paymentStatus)}</span>{order.notes && <span>Note: {order.notes}</span>}</div></section><section className="panel order-address-panel customer-order-history-panel"><div className="panel-heading"><div><h2>Order progress</h2><p>Status updates from the store</p></div></div><ol className="customer-order-timeline">{history.map((event) => <li key={event.id}><span className="customer-history-dot" /><div><strong>{event.fromStatus ? friendly(event.toStatus) : 'Order placed'}</strong><small>{new Date(event.occurredAt).toLocaleString()}</small>{event.note && <p>{event.note}</p>}</div></li>)}</ol></section></div>
       </div>
     </section>
   )

@@ -28,13 +28,14 @@ tags: [ims, planning, assessment]
 
 ## Current implementation status
 
-- Implemented code: responsive storefront/catalog, staff app shell, product create/edit/archive and category management, warehouse management, supplier profiles, purchase order drafts/approval/send/receive with partial receipts, dashboard, stock adjustments and ledger history, customer registration/login, saved delivery addresses, persistent cart, server-priced checkout, stock reservations, order history/detail and pending-order cancellation, JWT access tokens, rotating refresh sessions, owner bootstrap, DTO validation, common errors, and OpenAPI.
+- Implemented code: responsive storefront/catalog, staff app shell, product create/edit/archive and category management, warehouse management, supplier profiles, purchase order drafts/approval/send/receive with partial receipts, dashboard, stock adjustments and ledger history, customer registration/login, saved delivery addresses, persistent cart, server-priced checkout, stock reservations, order history/status tracking and pending-order cancellation, staff order fulfillment, auditable manual payment verification, JWT access tokens, rotating refresh sessions, owner bootstrap, DTO validation, common errors, and OpenAPI.
 - Inventory integrity includes locked balance rows, non-negative checks, one database transaction for balance/movement writes, and a unique-key reservation that makes concurrent retries replay the original adjustment or reject a changed payload.
 - Cookie refresh/logout requests require an exact allowed Origin; refresh cookies are HttpOnly and SameSite=Strict.
 - Procurement includes supplier CRUD/archive, role-scoped reference reads, purchase-order transitions, over-receipt checks, transaction-locked inventory posting, receipt records, and idempotent retries.
-- Verified: Vite production build succeeds with 8 UI tests passing; Maven backend tests pass (8 H2 app/security smoke, 2 origin guard, 2 customer checkout, 4 inventory, 2 purchase workflow). Oxlint exits successfully with five existing React warnings.
+- Order status changes are row-locked and audited. Delivery consumes reserved on-hand stock exactly once; manual transfer must be verified before shipment/pickup, and COD collection is recorded only after delivery. Payment verification requires the full order amount and has a UUID idempotency key. No external payment provider is connected.
+- Verified: Vite production build succeeds with 11 UI tests passing; Maven backend tests pass (12 H2 app/security smoke, 2 origin guard, 5 customer commerce, 4 inventory, 2 purchase workflow). Oxlint exits successfully with five existing React warnings.
 - Not verified: MySQL database creation, Flyway migration, Hibernate schema validation against MySQL, and phpMyAdmin table inspection. Existing local credentials were unavailable. The H2 profile disables Flyway and does not replace those checks.
-- Not implemented: business/tenant scoping, permission-level administration, user administration, login abuse controls, security audit persistence, email verification/password recovery, supplier returns, staff order fulfillment, POS/sales, payment verification/provider integration, customer returns/refunds, reports, support, and notifications. MySQL verification and deeper security/concurrency review remain outstanding.
+- Not implemented: business/tenant scoping, permission-level administration, user administration, login abuse controls, security audit persistence, email verification/password recovery, supplier returns, POS/sales, online payment-provider integration, customer returns/refunds, reports, support, and notifications. MySQL verification and deeper security/concurrency review remain outstanding.
 - Obsidian-ready notes are in `docs/obsidian/Inventory Management System/` and can be opened directly as a vault. No GitHub remote is configured.
 
 ## Prioritized roadmap
@@ -43,8 +44,8 @@ tags: [ims, planning, assessment]
 2. Identity and access: registration/login, short-lived access tokens, refresh rotation, server-side RBAC, bootstrap owner, and audit.
 3. Catalog and inventory: categories, products, warehouses, locked balances, idempotent adjustments, movement history, and safe public catalog reads.
 4. Procurement: supplier profiles, purchase orders, approvals, and partial goods receiving are implemented; supplier returns remain.
-5. Customer experience: registration/login, saved addresses, persistent cart, server-priced checkout, stock reservation, order history/detail, and pending-order cancellation are implemented; payment verification, richer catalog discovery, order tracking, and returns remain.
-6. Sales operations: POS, staff order fulfillment, concurrent sales controls, receipts, returns, inspection, and refunds.
+5. Customer experience: registration/login, saved addresses, persistent cart, server-priced checkout, stock reservation, order history/detail/status tracking, pending-order cancellation, and staff-recorded manual payment verification are implemented; richer catalog discovery and returns remain.
+6. Sales operations: POS, online payment-provider integration, sales reporting, returns, inspection, and refunds.
 7. Reporting and operations: support, notifications, exports, audit search, deployment, backup, and recovery.
 8. Verification: unit/integration/security/concurrency tests, MySQL migrations, and security review.
 

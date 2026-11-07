@@ -169,6 +169,32 @@ public class CustomerOrder {
         cancelledAt = at;
     }
 
+    public CustomerOrderStatus transitionTo(CustomerOrderStatus nextStatus) {
+        boolean allowed = switch (status) {
+            case PENDING -> nextStatus == CustomerOrderStatus.CONFIRMED;
+            case CONFIRMED -> nextStatus == CustomerOrderStatus.PROCESSING;
+            case PROCESSING -> nextStatus == CustomerOrderStatus.SHIPPED;
+            case READY_FOR_PICKUP, SHIPPED -> nextStatus == CustomerOrderStatus.DELIVERED;
+            case DELIVERED, CANCELLED -> false;
+        };
+        if (!allowed) {
+            throw new IllegalStateException("Order cannot move from " + status + " to " + nextStatus);
+        }
+        CustomerOrderStatus previousStatus = status;
+        status = nextStatus;
+        return previousStatus;
+    }
+
+    public void markPaymentVerified() {
+        if (status == CustomerOrderStatus.CANCELLED) {
+            throw new IllegalStateException("A cancelled order cannot receive a payment verification");
+        }
+        if (paymentStatus == PaymentStatus.PAID) {
+            throw new IllegalStateException("This order is already paid");
+        }
+        paymentStatus = PaymentStatus.PAID;
+    }
+
     public Long getId() { return id; }
     public String getOrderNumber() { return orderNumber; }
     public AppUser getCustomer() { return customer; }

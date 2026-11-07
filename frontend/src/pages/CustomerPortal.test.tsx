@@ -2,9 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import '@testing-library/jest-dom/vitest'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { api } from '../api/client'
-import { CustomerCartPage } from './CustomerPages'
+import { CustomerCartPage, CustomerOrderDetailPage } from './CustomerPages'
 import { Storefront } from './Storefront'
 
 const authState = vi.hoisted(() => ({ roles: ['CUSTOMER'] as string[] }))
@@ -96,5 +96,20 @@ describe('customer portal', () => {
     await user.click(await screen.findByRole('button', { name: 'Add to cart' }))
     await waitFor(() => expect(api.post).toHaveBeenCalledWith('/customer/cart/items', { productId: 8, quantity: 1 }))
     expect(await screen.findByRole('status')).toHaveTextContent('Added to cart')
+  })
+
+  it('shows the status timeline on the customer order detail page', async () => {
+    vi.mocked(api.get).mockImplementation((async (url: string) => {
+      if (url.endsWith('/customer/orders/22/history')) return { data: [
+        { id: 1, fromStatus: null, toStatus: 'PENDING', changedBy: 'Buyer User', note: 'Order placed', occurredAt: '2026-11-06T00:00:00Z' },
+      ] }
+      if (url.endsWith('/customer/orders/22')) return { data: order }
+      return { data: [] }
+    }) as never)
+
+    render(<MemoryRouter initialEntries={['/account/orders/22']}><Routes><Route path="/account/orders/:id" element={<CustomerOrderDetailPage />} /></Routes></MemoryRouter>)
+
+    expect(await screen.findByText('Order progress')).toBeInTheDocument()
+    expect(await screen.findAllByText('Order placed')).toHaveLength(2)
   })
 })
