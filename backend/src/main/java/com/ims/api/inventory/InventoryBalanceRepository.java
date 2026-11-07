@@ -14,6 +14,21 @@ import java.util.Optional;
 import java.math.BigDecimal;
 
 public interface InventoryBalanceRepository extends JpaRepository<InventoryBalance, Long> {
+    interface AvailableStockProjection {
+        Long getProductId();
+        BigDecimal getAvailableQuantity();
+    }
+
+    @Query("""
+            select balance.product.id as productId,
+                   (balance.onHandQuantity - balance.reservedQuantity - balance.damagedQuantity) as availableQuantity
+            from InventoryBalance balance
+            where balance.warehouse.id = :warehouseId and balance.product.id in :productIds
+            """)
+    List<AvailableStockProjection> findAvailableByProductIds(
+            @Param("warehouseId") long warehouseId,
+            @Param("productIds") List<Long> productIds);
+
     @Modifying
     @Query(value = """
             INSERT INTO inventory_balances (product_id, warehouse_id, on_hand_quantity, reserved_quantity, damaged_quantity, version)

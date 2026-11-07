@@ -7,7 +7,7 @@ status: active
 # Inventory Management System
 
 > [!info] Project state
-> The catalog, inventory foundation, supplier and purchase-receiving workflow, and customer cart/checkout/order slice are implemented and locally verified against H2. Staff shipping/delivery, status history, and manual payment recording are implemented. MySQL migration verification, POS, online payment-provider integration, and other later modules remain.
+> The catalog, inventory foundation, supplier and purchase-receiving workflow, customer cart/checkout/order slice, staff fulfillment/payment recording, and cashier POS are implemented. All 30 backend tests, 14 frontend UI tests, and the production frontend build pass. MySQL migration verification and later commerce/operations modules remain.
 
 ## Project
 - Vision: [[00 - Project Overview/Project Vision]]
@@ -24,12 +24,13 @@ status: active
 - Database schema: [[02 - Database/Database Schema]]
 - Inventory ledger: [[02 - Database/Inventory Ledger]]
 - API status: [[03 - API Documentation/API Overview]]
+- POS workflow: [[03 - API Documentation/Point of Sale]]
 - Testing: [[06 - Testing/Testing Strategy]]
 - Deployment: [[07 - Deployment/Deployment Guide]]
 
 ## Verified environment
-- Node.js 24.13.0 / npm 11.12.1; frontend build and 11 UI tests pass
-- Java 21.0.11 / Maven Wrapper 3.9.16; backend compiles and 25 tests pass (H2 security smoke, origin guard, customer commerce, inventory, purchasing)
+- Node.js 24.13.0 / npm 11.12.1; production build passes and 14 UI tests pass
+- Java 21.0.11 / Maven Wrapper 3.9.16; all 30 backend tests pass, including POS workflow/security checks
 - AMPPS MySQL 8.0.45; port 3306 listens locally; app credentials are not provisioned
 - AMPPS phpMyAdmin uses cookie authentication
 - Maven is not installed globally; use Maven Wrapper
@@ -41,10 +42,11 @@ status: active
 - [x] Customer catalog reads live API data
 - [x] Customer registration/login, addresses, cart, server-priced checkout, stock reservation, order history, and pending-order cancellation
 - [x] Staff order fulfillment, customer order tracking, and auditable manual payment recording
-- [ ] POS, online payment-provider integration, returns/refunds, reporting, support, and notifications
+- [x] Cashier POS with stock-checked receipts, payment capture, and browser printing
+- [ ] Online payment-provider integration, returns/refunds, reporting, support, and notifications
 - [ ] Complete permission administration and business/warehouse boundaries
 - [x] Supplier records, purchase-order approvals, and partial receiving
-- [ ] Supplier returns, customer purchasing, POS, returns, reports, and support
+- [ ] Supplier returns, customer returns, reports, and support
 - [ ] Run MySQL integration verification and security review
 
 See [[05 - Development/Development Progress]].

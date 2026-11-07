@@ -9,6 +9,7 @@ status: planned
 Spring Boot 3 / Java 21 layered API:
 - Controllers: HTTP and DTO boundary only.
 - Services: transaction boundaries and business rules.
+- POS sales: server-priced sale/receipt snapshots, method-specific tender validation, idempotency, and transactional inventory ledger writes.
 - Repositories: persistence access.
 - Entities: internal persistence model, never directly serialized.
 - Security: authentication, RBAC, object/warehouse scope, and audit.

@@ -263,4 +263,35 @@ public class InventoryService {
                 "Customer order fulfilled " + orderNumber,
                 "CUSTOMER_ORDER", orderNumber, quantity.negate()));
     }
+
+    @Transactional
+    public void recordPosSaleStock(
+            long productId,
+            long warehouseId,
+            BigDecimal quantity,
+            String actorEmail,
+            String idempotencyKey,
+            String saleNumber
+    ) {
+        Product product = products.findById(productId)
+                .orElseThrow(() -> ApiException.notFound("Product not found"));
+        if (product.getTrackingType() == TrackingType.NONE) return;
+        Warehouse warehouse = warehouses.findById(warehouseId)
+                .orElseThrow(() -> ApiException.notFound("Warehouse not found"));
+        InventoryBalance balance = balances.findForUpdate(productId, warehouseId)
+                .orElseThrow(() -> ApiException.conflict("There is not enough available stock for this sale"));
+        if (balance.getAvailableQuantity().compareTo(quantity) < 0) {
+            throw ApiException.conflict("There is not enough available stock to complete this sale");
+        }
+
+        AppUser actor = users.findByEmailIgnoreCase(actorEmail)
+                .orElseThrow(ApiException::unauthorized);
+        BigDecimal before = balance.getOnHandQuantity();
+        BigDecimal after = before.subtract(quantity);
+        balance.setOnHandQuantity(after);
+        balances.save(balance);
+        movements.save(new InventoryMovement(product, warehouse, actor, "POS_SALE", quantity.negate(),
+                before, after, idempotencyKey, "Point-of-sale transaction " + saleNumber,
+                "POS_SALE", saleNumber, BigDecimal.ZERO));
+    }
 }

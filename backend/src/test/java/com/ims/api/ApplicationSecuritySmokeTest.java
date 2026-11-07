@@ -123,4 +123,30 @@ class ApplicationSecuritySmokeTest {
                         .content("{\"idempotencyKey\":\"4bb9d55d-1cc6-4892-a2d8-9735d22cedba\",\"amount\":1}"))
                 .andExpect(status().isForbidden());
     }
+
+    @Test
+    @WithMockUser(roles = "CASHIER")
+    void cashierCanReadPosSalesHistory() throws Exception {
+        mvc.perform(get("/api/v1/admin/pos/sales"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray());
+    }
+
+    @Test
+    @WithMockUser(roles = "ACCOUNTANT")
+    void accountantCanReadSalesButCannotCreatePosTransactions() throws Exception {
+        mvc.perform(get("/api/v1/admin/pos/sales"))
+                .andExpect(status().isOk());
+        mvc.perform(post("/api/v1/admin/pos/sales")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"idempotencyKey\":\"4bb9d55d-1cc6-4892-a2d8-9735d22cedba\",\"warehouseId\":1,\"items\":[{\"productId\":1,\"quantity\":1}],\"discountAmount\":0,\"paymentMethod\":\"CASH\",\"amountTendered\":1}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "INVENTORY_MANAGER")
+    void inventoryManagerDoesNotGetPosAccessByDefault() throws Exception {
+        mvc.perform(get("/api/v1/admin/pos/sales"))
+                .andExpect(status().isForbidden());
+    }
 }

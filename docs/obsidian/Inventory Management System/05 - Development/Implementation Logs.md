@@ -42,3 +42,12 @@ status: active
 - Added a staff queue for order progress and an audit record for full-amount manual-transfer verification or COD cash collection. Manual-transfer orders cannot ship before staff verification; COD collection can be recorded only after delivery.
 - Added customer order timeline display and tests for delivery ledger integrity, idempotent payment replay, manual-transfer sequencing, and history ownership.
 - Current verification: 11 frontend tests pass, the production build passes, and all 25 backend tests pass. `git diff --check` passes. MySQL migration validation remains outstanding.
+
+## 2026-11-07 — Point of sale
+- Added Flyway V5 tables for independent POS sales, item price/cost snapshots, and sale idempotency records.
+- Added cashier product/customer lookup, configurable tax/currency, server-priced cash or external-terminal sale creation, receipt reads, and row-locked stock deduction with a `POS_SALE` inventory movement.
+- Cash transactions calculate tender and change. Terminal approval stores only a cashier-entered reference; the app does not collect card data or contact a payment provider.
+- Added the `/admin/pos` cashier screen with product search/barcode entry, category filters, cart and discount controls, customer selection, payment capture, recent sales, and a print-ready receipt.
+- Accountants have a history-only view of recent sales and receipt details; they cannot access checkout controls.
+- Verification: all 30 backend tests and 14 frontend UI tests pass; the production frontend build and `git diff --check` pass. Oxlint exits successfully with five existing React warnings.
+- MySQL V5 migration validation remains outstanding because application database credentials are unavailable.

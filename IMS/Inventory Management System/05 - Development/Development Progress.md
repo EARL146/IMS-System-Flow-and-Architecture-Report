@@ -19,14 +19,15 @@ status: active
 - [x] Implemented customer saved addresses, persistent cart, customer checkout, current-price calculation, inventory reservation/release, order history/detail, pending-order cancellation, and honest COD/manual-transfer payment states.
 - [x] Implemented role-scoped staff order queues, audited order-status history, state-checked shipping/delivery, once-only stock consumption at delivery, and full-amount manual payment verification/collection records.
 - [x] Added customer order-progress timeline and staff order/payment management screen.
+- [x] Added cashier POS with independent sales receipts, server-priced checkout, cash change, external-terminal approval references, customer lookup, receipt printing, retry-safe requests, and locked stock deductions in the inventory ledger.
 - [x] Customer routes require the CUSTOMER role, are scoped to the authenticated user, and return 403 for denied staff roles.
-- [x] Frontend production build passes; 11 UI tests pass; backend compiles and 25 tests pass (12 H2 app/security smoke, 2 origin guard, 5 customer commerce, 4 inventory, 2 procurement integration).
+- [x] Frontend production build and all 14 UI tests pass; backend compiles and all 30 tests pass, including POS cashier/payment/stock and role checks.
 - [x] Added database setup notes, environment loader, README, and Obsidian-ready project notes.
 
 ## Pending
 - [ ] Provision MySQL credentials and verify the Flyway migration, Hibernate validation, and API startup. Current app smoke tests use H2 and disable Flyway.
 - [ ] Add permission-level RBAC, business/warehouse scopes, staff account management, persistent security audit events, login abuse limits, password recovery, and integration/security review of CSRF controls.
-- [ ] Implement email verification/password recovery, POS/sales, online payment-provider integration, supplier/customer returns/refunds, reporting, notifications, and support.
+- [ ] Implement email verification/password recovery, online payment-provider integration, supplier/customer returns/refunds, reporting, notifications, and support.
 - [ ] Expand authorization, security, MySQL migration, and multi-connection concurrency coverage.
 - [ ] Configure GitHub destination/privacy before publishing.
 

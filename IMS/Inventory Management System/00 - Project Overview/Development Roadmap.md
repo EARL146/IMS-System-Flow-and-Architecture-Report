@@ -14,7 +14,7 @@ status: active
 6. [~] Product/category/warehouse and inventory ledger slices exist; extend product tracking/editor and verify against MySQL.
 7. [~] Supplier records, purchase approvals, and partial receiving implemented; supplier returns remain.
 8. [~] Live catalog, customer registration/login, saved addresses, persistent cart, server-priced checkout, stock reservation, order history/status tracking, pending cancellation, and auditable staff-recorded manual payment verification are implemented; returns remain.
-9. [~] Staff order fulfillment and once-only stock deduction at delivery are implemented; POS, provider integrations, sales, returns, inspection, and refunds remain.
+9. [~] Staff order fulfillment and once-only stock deduction at delivery are implemented; cashier POS receipts and stock deduction are implemented; provider integrations, sales reporting, returns, inspection, and refunds remain.
 10. [ ] Reports, support, notifications, exports, security tests, deployment, backup, and recovery.
 
 `[~]` means partially implemented. A phase is complete only after its implementation is verified. See [[Implementation Plan]] and [[../05 - Development/Development Progress]].

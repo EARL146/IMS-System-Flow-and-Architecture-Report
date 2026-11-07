@@ -6,6 +6,7 @@ import { DashboardPage } from './pages/DashboardPage'
 import { InventoryPage } from './pages/InventoryPage'
 import { PurchaseOrdersPage } from './pages/PurchaseOrdersPage'
 import { CustomerOrdersAdminPage } from './pages/CustomerOrdersAdminPage'
+import { PosPage } from './pages/PosPage'
 import { ProductsPage } from './pages/ProductsPage'
 import { SuppliersPage } from './pages/SuppliersPage'
 import { Storefront } from './pages/Storefront'
@@ -76,6 +77,7 @@ export default function App() {
         <Route path="suppliers" element={<RequireRoles roles={['OWNER', 'ADMIN', 'PURCHASING_OFFICER']}><SuppliersPage /></RequireRoles>} />
         <Route path="purchasing" element={<RequireRoles roles={['OWNER', 'ADMIN', 'PURCHASING_OFFICER', 'WAREHOUSE_STAFF', 'INVENTORY_MANAGER']}><PurchaseOrdersPage /></RequireRoles>} />
         <Route path="customer-orders" element={<RequireRoles roles={['OWNER', 'ADMIN', 'WAREHOUSE_STAFF', 'CUSTOMER_SUPPORT', 'ACCOUNTANT', 'CASHIER']}><CustomerOrdersAdminPage /></RequireRoles>} />
+        <Route path="pos" element={<RequireRoles roles={['OWNER', 'ADMIN', 'CASHIER', 'ACCOUNTANT']}><PosPage /></RequireRoles>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
