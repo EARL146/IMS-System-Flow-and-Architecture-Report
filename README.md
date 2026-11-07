@@ -4,7 +4,7 @@ A staged full-stack inventory and retail management platform. The implementation
 
 ## Current status
 
-The initial workspace was empty and had no Git history. The first delivery is an implementation foundation, not a claim that every requested business module is complete. Current scope and verified status are tracked in [the implementation plan](docs/implementation-plan.md) and Obsidian-ready notes under `docs/obsidian/Inventory Management System/`.
+Implemented vertical slices include product/category/warehouse administration, stock adjustments and ledger history, suppliers and purchase receiving, plus a customer storefront with registration/login, saved addresses, persistent cart, server-priced checkout, stock reservations, order history/detail, and pending-order cancellation. POS, staff order fulfillment, returns/refunds, online payment verification, business scoping, and several other requested modules remain in progress. See [the implementation plan](docs/implementation-plan.md) and Obsidian notes for the verified scope.
 
 ## Planned architecture
 
@@ -33,7 +33,7 @@ Keep `.env` out of Git and do not use production credentials for local developme
 
 ## API and database
 
-The API uses `/api/v1`. Flyway owns schema changes; Hibernate schema auto-update is disabled. Inventory changes are represented as ledger movements alongside current balance rows. Implemented routes and limitations are tracked in the project notes.
+The API uses `/api/v1`. Flyway owns schema changes; Hibernate schema auto-update is disabled. Inventory changes are represented as ledger movements alongside current balance rows, including separate reserved-stock deltas. Customer checkout refreshes prices on the server, checks available inventory in a transaction, reserves stock, snapshots the delivery address, and records an idempotency key. `IMS_CHECKOUT_TAX_RATE`, `IMS_CHECKOUT_SHIPPING_AMOUNT`, and `IMS_CHECKOUT_CURRENCY_CODE` configure the current flat checkout calculation; tax and shipping default to zero until configured. See the API and database notes for route and migration details.
 
 ## Security
 
@@ -41,8 +41,8 @@ The backend is authoritative for authentication, permissions, product prices, an
 
 ## Verification
 
-Verified so far: `npm run build` passes; `npm test` passes 6 frontend UI tests; `backend/mvnw.cmd test` passes 14 backend tests (6 H2 application/security smoke, 2 origin-guard, 4 inventory, and 2 purchase-receiving workflow tests). Production MySQL migration and integration checks still require a provisioned database account.
+Verified: `npm run build` passes; `npm test -- --pool=threads --maxWorkers=1 --no-file-parallelism --no-isolate --testTimeout=20000 --hookTimeout=30000 --reporter=dot` passes 8 frontend UI tests; `backend/mvnw.cmd -B test` passes 18 backend tests (8 application/security smoke, 2 origin-guard, 2 customer checkout, 4 inventory, and 2 purchase-receiving workflow tests). Oxlint exits successfully with five existing React warnings. Production MySQL migration and integration checks still require a provisioned database account.
 
 ## Obsidian
 
-Obsidian-formatted Markdown notes are maintained in `docs/obsidian/Inventory Management System/`. Open that folder in Obsidian with **Open folder as vault**; you do not need to select or change one of your existing vaults. See [the Obsidian quick start](docs/obsidian/Inventory%20Management%20System/00%20-%20Project%20Overview/Obsidian%20Quick%20Start.md).
+Obsidian-formatted source notes are maintained in `docs/obsidian/Inventory Management System/`. The local Obsidian vault at `IMS/` contains the project notes under `IMS/Inventory Management System/`; its `.obsidian/` settings and generated Welcome note stay local and are excluded from Git. See [the Obsidian quick start](docs/obsidian/Inventory%20Management%20System/00%20-%20Project%20Overview/Obsidian%20Quick%20Start.md).

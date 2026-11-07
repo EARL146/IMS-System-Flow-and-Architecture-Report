@@ -42,13 +42,16 @@ public class InventoryMovement {
     @Column(name = "quantity_delta", nullable = false, precision = 18, scale = 3)
     private BigDecimal quantityDelta;
 
+    @Column(name = "reserved_quantity_delta", nullable = false, precision = 18, scale = 3)
+    private BigDecimal reservedQuantityDelta = BigDecimal.ZERO;
+
     @Column(name = "quantity_before", nullable = false, precision = 18, scale = 3)
     private BigDecimal quantityBefore;
 
     @Column(name = "quantity_after", nullable = false, precision = 18, scale = 3)
     private BigDecimal quantityAfter;
 
-    @Column(name = "idempotency_key", nullable = false, unique = true, length = 36)
+    @Column(name = "idempotency_key", nullable = false, unique = true, length = 36, columnDefinition = "char(36)")
     private String idempotencyKey;
 
     @Column(nullable = false, length = 240)
@@ -78,7 +81,7 @@ public class InventoryMovement {
             String reason
     ) {
         this(product, warehouse, actor, "ADJUSTMENT", quantityDelta, quantityBefore, quantityAfter,
-                idempotencyKey, reason, null, null);
+                idempotencyKey, reason, null, null, BigDecimal.ZERO);
     }
 
     public InventoryMovement(
@@ -94,6 +97,24 @@ public class InventoryMovement {
             String referenceType,
             String referenceId
     ) {
+        this(product, warehouse, actor, movementType, quantityDelta, quantityBefore, quantityAfter,
+                idempotencyKey, reason, referenceType, referenceId, BigDecimal.ZERO);
+    }
+
+    public InventoryMovement(
+            Product product,
+            Warehouse warehouse,
+            AppUser actor,
+            String movementType,
+            BigDecimal quantityDelta,
+            BigDecimal quantityBefore,
+            BigDecimal quantityAfter,
+            String idempotencyKey,
+            String reason,
+            String referenceType,
+            String referenceId,
+            BigDecimal reservedQuantityDelta
+    ) {
         this.product = product;
         this.warehouse = warehouse;
         this.actor = actor;
@@ -105,6 +126,7 @@ public class InventoryMovement {
         this.reason = reason;
         this.referenceType = referenceType;
         this.referenceId = referenceId;
+        this.reservedQuantityDelta = reservedQuantityDelta;
     }
 
     public Long getId() {
@@ -125,6 +147,10 @@ public class InventoryMovement {
 
     public BigDecimal getQuantityDelta() {
         return quantityDelta;
+    }
+
+    public BigDecimal getReservedQuantityDelta() {
+        return reservedQuantityDelta;
     }
 
     public BigDecimal getQuantityBefore() {

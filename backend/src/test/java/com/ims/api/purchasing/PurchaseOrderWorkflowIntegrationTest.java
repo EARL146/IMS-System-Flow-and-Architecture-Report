@@ -130,7 +130,7 @@ class PurchaseOrderWorkflowIntegrationTest {
                                 ordered.items().getFirst().id(), new BigDecimal("2.001")))),
                 receiver.getEmail()));
         assertEquals(PurchaseOrderStatus.ORDERED, purchaseOrders.get(draft.id()).status());
-        assertEquals(0, balances.count());
+        assertEquals(0, balances.findAllForWarehouse(warehouse.getId(), PageRequest.of(0, 10)).getTotalElements());
     }
 
     private AppUser saveUser(String email) {

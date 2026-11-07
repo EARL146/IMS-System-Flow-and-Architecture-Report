@@ -6,10 +6,6 @@ status: ready
 
 # Open the IMS notes in Obsidian
 
-These Markdown notes are stored in the project at `docs/obsidian/Inventory Management System/`.
+On this machine, the local vault is the project's `IMS/` folder. Its note set is in `IMS/Inventory Management System/`. For a clone without that local vault, choose **Open folder as vault** and select `docs/obsidian/Inventory Management System/`.
 
-1. In Obsidian, choose **Open folder as vault**.
-2. Select the `Inventory Management System` folder inside `docs/obsidian`.
-3. Start at [[../Inventory Management Home]].
-
-Obsidian uses “vault” to mean a folder of notes. Opening this project folder does not require changing or moving any of your other vaults.
+Open [[../Inventory Management Home]] to navigate the notes. Vault-local `.obsidian/` settings are not committed.

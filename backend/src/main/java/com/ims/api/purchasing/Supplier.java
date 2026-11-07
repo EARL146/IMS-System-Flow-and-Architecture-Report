@@ -50,7 +50,7 @@ public class Supplier {
     @Column(name = "postal_code", length = 24)
     private String postalCode;
 
-    @Column(name = "country_code", length = 2)
+    @Column(name = "country_code", length = 2, columnDefinition = "char(2)")
     private String countryCode;
 
     @Column(columnDefinition = "text")

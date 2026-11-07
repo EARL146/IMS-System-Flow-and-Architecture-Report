@@ -41,6 +41,10 @@ app:
   bootstrap:
     admin-email: ${IMS_BOOTSTRAP_ADMIN_EMAIL:}
     admin-password: ${IMS_BOOTSTRAP_ADMIN_PASSWORD:}
+  checkout:
+    tax-rate: ${IMS_CHECKOUT_TAX_RATE:0.00}
+    shipping-amount: ${IMS_CHECKOUT_SHIPPING_AMOUNT:0.00}
+    currency-code: ${IMS_CHECKOUT_CURRENCY_CODE:PHP}
   cors:
     allowed-origins: ${IMS_CORS_ALLOWED_ORIGINS:http://localhost:5173}
 

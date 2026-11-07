@@ -30,10 +30,10 @@ public class GoodsReceipt {
     @JoinColumn(name = "purchase_order_id", nullable = false)
     private PurchaseOrder purchaseOrder;
 
-    @Column(name = "idempotency_key", nullable = false, unique = true, length = 36)
+    @Column(name = "idempotency_key", nullable = false, unique = true, length = 36, columnDefinition = "char(36)")
     private String idempotencyKey;
 
-    @Column(name = "request_hash", nullable = false, length = 64)
+    @Column(name = "request_hash", nullable = false, length = 64, columnDefinition = "char(64)")
     private String requestHash;
 
     @Column(name = "delivery_reference", length = 100)

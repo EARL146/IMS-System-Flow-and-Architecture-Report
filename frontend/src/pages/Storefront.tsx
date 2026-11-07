@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { useAuth } from '../auth/AuthContext'
 import { ArrowRight, CircleUserRound, Search, ShieldCheck, ShoppingBag, Store } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { api, getErrorMessage } from '../api/client'
 
 interface CatalogProduct {
@@ -24,6 +25,8 @@ function money(value: number) {
 }
 
 export function Storefront() {
+  const { user } = useAuth()
+  const navigate = useNavigate()
   const [products, setProducts] = useState<CatalogProduct[]>([])
   const [total, setTotal] = useState(0)
   const [searchValue, setSearchValue] = useState('')
@@ -31,6 +34,9 @@ export function Storefront() {
   const [retry, setRetry] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [cartMessage, setCartMessage] = useState('')
+  const [addingProductId, setAddingProductId] = useState<number | null>(null)
+  const isCustomer = Boolean(user?.roles.includes('CUSTOMER'))
 
   useEffect(() => {
     let current = true
@@ -59,6 +65,23 @@ export function Storefront() {
     setQuery(searchValue.trim())
   }
 
+  async function addToCart(productId: number) {
+    if (!isCustomer) {
+      navigate('/login')
+      return
+    }
+    setAddingProductId(productId)
+    setCartMessage('')
+    try {
+      await api.post('/customer/cart/items', { productId, quantity: 1 })
+      setCartMessage('Added to cart. You can review it at any time.')
+    } catch (requestError) {
+      setCartMessage(getErrorMessage(requestError, 'This product could not be added to your cart.'))
+    } finally {
+      setAddingProductId(null)
+    }
+  }
+
   return (
     <div className="storefront">
       <div className="announcement">A clearer view of the products your business needs.</div>
@@ -72,9 +95,10 @@ export function Storefront() {
           <input aria-label="Search products" placeholder="Search the catalog" value={searchValue} onChange={(event) => setSearchValue(event.target.value)} />
           <button type="submit">Search</button>
         </form>
-        <nav className="store-actions" aria-label="Staff access">
+        <nav className="store-actions" aria-label="Account and shopping">
           <Link to="/admin/login" className="quiet-link"><CircleUserRound size={19} /> Staff sign in</Link>
-          <button className="cart-link" aria-label="Customer purchasing is not available yet" title="Customer purchasing is in progress" disabled><ShoppingBag size={19} /></button>
+          <Link to={isCustomer ? '/cart' : '/login'} className="cart-link" aria-label="Shopping cart" title="Shopping cart"><ShoppingBag size={19} /></Link>
+          <Link to={isCustomer ? '/account/orders' : '/login'} className="quiet-link">{isCustomer ? 'My account' : 'Sign in'}</Link>
         </nav>
       </header>
 
@@ -117,6 +141,7 @@ export function Storefront() {
           {!loading && !error && products.length === 0 && (
             <div className="catalog-empty"><ShoppingBag size={28} /><strong>No products found</strong><span>Try another product name or SKU.</span></div>
           )}
+          {cartMessage && <div className="notice notice-success storefront-cart-message" role="status">{cartMessage}<Link to="/cart">View cart</Link></div>}
           {!loading && !error && products.length > 0 && (
             <div className="product-grid">
               {products.map((product) => (
@@ -134,6 +159,9 @@ export function Storefront() {
                       <div><small>Price</small><strong>{money(product.sellingPrice)}</strong></div>
                       <span className="unit-tag">/ {product.unitOfMeasure}</span>
                     </div>
+                    <button className="primary-button storefront-add-button" onClick={() => void addToCart(product.id)} disabled={addingProductId === product.id}>
+                      {addingProductId === product.id ? 'Adding…' : isCustomer ? 'Add to cart' : 'Sign in to order'}
+                    </button>
                   </div>
                 </article>
               ))}
@@ -143,14 +171,14 @@ export function Storefront() {
 
         <section className="service-band">
           <div><span className="service-icon"><ShieldCheck size={18} /></span><span><strong>Reliable information</strong><small>Catalog data comes from the inventory service.</small></span></div>
-          <div><span className="service-icon"><ShoppingBag size={18} /></span><span><strong>Ordering is in progress</strong><small>Checkout will open when order and payment APIs are ready.</small></span></div>
+          <div><span className="service-icon"><ShoppingBag size={18} /></span><span><strong>Customer ordering is available</strong><small>Checkout checks current prices and reserves stock.</small></span></div>
           <Link to="/admin/login">Staff workspace <ArrowRight size={16} /></Link>
         </section>
       </main>
 
       <footer className="store-footer">
         <Link className="brand-lockup" to="/"><span className="brand-mark"><Store size={17} /></span><span><strong>Northstar</strong><small>SUPPLY CO.</small></span></Link>
-        <span>Inventory management foundation · customer ordering is being built</span>
+        <span>Inventory and order information comes from the Northstar store service.</span>
         <Link to="/admin/login">Staff sign in</Link>
       </footer>
     </div>

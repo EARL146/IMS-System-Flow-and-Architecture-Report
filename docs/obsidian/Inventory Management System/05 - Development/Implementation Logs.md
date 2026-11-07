@@ -23,3 +23,14 @@ status: active
 - Current verification: 6 frontend tests and 14 backend tests pass; the production frontend build passes.
 - MySQL migrations remain unverified because the application database account has not been provisioned.
 - Obsidian notes are in this project; open `docs/obsidian/Inventory Management System/` as a vault when desired.
+
+## 2026-11-06 — Customer commerce foundation
+- Added Flyway V3 customer-address, persistent-cart, customer-order, order-line snapshot, checkout-idempotency, and reserved-movement-delta schema.
+- Added customer-scoped address/cart/checkout/order APIs and public active fulfillment-location reads.
+- Checkout uses current server prices, flat configured tax/shipping, per-customer cart/user locking, row-locked available stock reservation, address/line snapshots, and idempotent request replay. Pending-order cancellation releases reservations.
+- Added customer registration/login, storefront add-to-cart, cart/checkout, address management, order list/detail, and pending-order cancellation pages.
+- COD remains unpaid until collection; manual transfer remains awaiting verification. The application has no payment-provider integration, payment-verification workflow, email verification, or password-recovery flow.
+- Customer role and ownership checks, checkout totals/idempotency, reservation/release, insufficient-stock rollback, and payment-state tests pass. A security test found method-security denial was being returned as 500; centralized handling now returns 403.
+- Current verification: frontend build passes with 8 UI tests; backend passes 18 tests. Oxlint passes with five existing warnings.
+- MySQL migrations remain unverified because the application database account has not been provisioned.
+- Confirmed the local Obsidian vault at `IMS/`; copied the project notes into `IMS/Inventory Management System/`, verified internal links, and excluded `.obsidian/` settings and the generated welcome note from Git.

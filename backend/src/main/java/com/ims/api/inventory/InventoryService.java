@@ -160,4 +160,72 @@ public class InventoryService {
         movements.save(new InventoryMovement(product, warehouse, actor, "PURCHASE_RECEIPT", quantity,
                 before, after, idempotencyKey, reason, "GOODS_RECEIPT", goodsReceiptId));
     }
+
+    @Transactional
+    public void reserveCustomerOrderStock(
+            long productId,
+            long warehouseId,
+            BigDecimal quantity,
+            String customerEmail,
+            String idempotencyKey,
+            String orderNumber
+    ) {
+        Product product = products.findById(productId)
+                .orElseThrow(() -> ApiException.notFound("Product not found"));
+        if (product.getTrackingType() == TrackingType.NONE) return;
+        Warehouse warehouse = warehouses.findById(warehouseId)
+                .orElseThrow(() -> ApiException.notFound("Warehouse not found"));
+
+        balances.ensureExists(productId, warehouseId);
+        InventoryBalance balance = balances.findForUpdate(productId, warehouseId)
+                .orElseThrow(() -> new IllegalStateException("Inventory balance could not be locked"));
+        if (balance.getAvailableQuantity().compareTo(quantity) < 0) {
+            throw ApiException.conflict("There is not enough available stock to complete this order");
+        }
+
+        AppUser actor = users.findByEmailIgnoreCase(customerEmail)
+                .orElseThrow(ApiException::unauthorized);
+        BigDecimal reservedBefore = balance.getReservedQuantity();
+        BigDecimal reservedAfter = reservedBefore.add(quantity);
+        BigDecimal onHand = balance.getOnHandQuantity();
+        balance.setReservedQuantity(reservedAfter);
+        balances.save(balance);
+        movements.save(new InventoryMovement(product, warehouse, actor, "SALE_RESERVATION",
+                BigDecimal.ZERO, onHand, onHand, idempotencyKey,
+                "Stock reserved for customer order " + orderNumber,
+                "CUSTOMER_ORDER", orderNumber, reservedAfter.subtract(reservedBefore)));
+    }
+
+    @Transactional
+    public void releaseCustomerOrderStock(
+            long productId,
+            long warehouseId,
+            BigDecimal quantity,
+            String customerEmail,
+            String idempotencyKey,
+            String orderNumber
+    ) {
+        Product product = products.findById(productId)
+                .orElseThrow(() -> ApiException.notFound("Product not found"));
+        if (product.getTrackingType() == TrackingType.NONE) return;
+        Warehouse warehouse = warehouses.findById(warehouseId)
+                .orElseThrow(() -> ApiException.notFound("Warehouse not found"));
+        InventoryBalance balance = balances.findForUpdate(productId, warehouseId)
+                .orElseThrow(() -> new IllegalStateException("Reserved stock balance could not be found"));
+        if (balance.getReservedQuantity().compareTo(quantity) < 0) {
+            throw new IllegalStateException("Reserved stock is lower than the order quantity");
+        }
+
+        AppUser actor = users.findByEmailIgnoreCase(customerEmail)
+                .orElseThrow(ApiException::unauthorized);
+        BigDecimal reservedBefore = balance.getReservedQuantity();
+        BigDecimal reservedAfter = reservedBefore.subtract(quantity);
+        BigDecimal onHand = balance.getOnHandQuantity();
+        balance.setReservedQuantity(reservedAfter);
+        balances.save(balance);
+        movements.save(new InventoryMovement(product, warehouse, actor, "SALE_RESERVATION_RELEASE",
+                BigDecimal.ZERO, onHand, onHand, idempotencyKey,
+                "Reserved stock released for customer order " + orderNumber,
+                "CUSTOMER_ORDER", orderNumber, reservedAfter.subtract(reservedBefore)));
+    }
 }

@@ -54,6 +54,7 @@ public final class InventoryDtos {
             String warehouseName,
             String movementType,
             BigDecimal quantityDelta,
+            BigDecimal reservedQuantityDelta,
             BigDecimal quantityBefore,
             BigDecimal quantityAfter,
             String idempotencyKey,
@@ -65,6 +66,7 @@ public final class InventoryDtos {
                     movement.getId(), movement.getProduct().getId(), movement.getProduct().getSku(),
                     movement.getProduct().getName(), movement.getWarehouse().getId(),
                     movement.getWarehouse().getName(), movement.getMovementType(), movement.getQuantityDelta(),
+                    movement.getReservedQuantityDelta(),
                     movement.getQuantityBefore(), movement.getQuantityAfter(), movement.getIdempotencyKey(),
                     movement.getReason(), movement.getOccurredAt());
         }

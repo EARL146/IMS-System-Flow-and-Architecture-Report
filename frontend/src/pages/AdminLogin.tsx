@@ -17,8 +17,8 @@ export function AdminLogin() {
     setSubmitting(true)
     setError('')
     try {
-      await login(email, password)
-      navigate('/admin', { replace: true })
+      const signedInUser = await login(email, password)
+      navigate(signedInUser.roles.includes('CUSTOMER') ? '/account/orders' : '/admin', { replace: true })
     } catch (requestError) {
       setError(getErrorMessage(requestError, 'Sign in failed. Check your details and try again.'))
     } finally {

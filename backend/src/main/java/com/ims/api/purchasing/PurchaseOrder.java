@@ -47,7 +47,7 @@ public class PurchaseOrder {
     @Column(nullable = false, length = 32)
     private PurchaseOrderStatus status;
 
-    @Column(name = "currency_code", nullable = false, length = 3)
+    @Column(name = "currency_code", nullable = false, length = 3, columnDefinition = "char(3)")
     private String currencyCode;
 
     @Column(name = "expected_date")

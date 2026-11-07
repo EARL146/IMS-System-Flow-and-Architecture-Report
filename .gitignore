@@ -30,3 +30,7 @@ exports/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Obsidian vault-local settings and its generated welcome note
+**/.obsidian/
+IMS/Welcome.md

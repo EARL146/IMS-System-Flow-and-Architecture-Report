@@ -89,4 +89,8 @@ public class InventoryBalance {
     public void setOnHandQuantity(BigDecimal onHandQuantity) {
         this.onHandQuantity = onHandQuantity;
     }
+
+    public void setReservedQuantity(BigDecimal reservedQuantity) {
+        this.reservedQuantity = reservedQuantity;
+    }
 }

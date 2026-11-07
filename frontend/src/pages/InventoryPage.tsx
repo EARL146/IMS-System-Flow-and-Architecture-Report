@@ -7,7 +7,7 @@ interface WarehouseItem { id: number; code: string; name: string; active: boolea
 interface ProductOption { id: number; sku: string; name: string }
 interface ProductPage { content: ProductOption[] }
 interface StockItem { productId: number; sku: string; productName: string; warehouseName: string; onHand: number; reserved: number; damaged: number; available: number }
-interface Movement { id: number; sku: string; productName: string; movementType: string; quantityDelta: number; quantityBefore: number; quantityAfter: number; reason: string; occurredAt: string }
+interface Movement { id: number; sku: string; productName: string; movementType: string; quantityDelta: number; reservedQuantityDelta: number; quantityBefore: number; quantityAfter: number; reason: string; occurredAt: string }
 
 export function InventoryPage() {
   const [warehouses, setWarehouses] = useState<WarehouseItem[]>([])
@@ -113,8 +113,8 @@ export function InventoryPage() {
         )}
       </section>
       <section className="panel inventory-table-panel"><div className="panel-heading"><div><h2>Movement history</h2><p>Recent changes for the selected warehouse</p></div></div>
-        {movements.length === 0 ? <div className="inline-empty">No movements have been recorded.</div> : <div className="table-wrap"><table><thead><tr><th>When</th><th>Product</th><th>Change</th><th>Balance</th><th>Reason</th></tr></thead><tbody>
-          {movements.map((movement) => <tr key={movement.id}><td>{new Date(movement.occurredAt).toLocaleString()}</td><td><strong>{movement.productName}</strong><small>{movement.sku}</small></td><td className={movement.quantityDelta >= 0 ? 'positive' : 'negative'}>{movement.quantityDelta > 0 ? '+' : ''}{movement.quantityDelta}</td><td>{movement.quantityBefore} → {movement.quantityAfter}</td><td>{movement.reason}</td></tr>)}
+        {movements.length === 0 ? <div className="inline-empty">No movements have been recorded.</div> : <div className="table-wrap"><table><thead><tr><th>When</th><th>Product</th><th>Type</th><th>On-hand Δ</th><th>Reserved Δ</th><th>Balance</th><th>Reason</th></tr></thead><tbody>
+          {movements.map((movement) => <tr key={movement.id}><td>{new Date(movement.occurredAt).toLocaleString()}</td><td><strong>{movement.productName}</strong><small>{movement.sku}</small></td><td>{movement.movementType.replaceAll('_', ' ')}</td><td className={movement.quantityDelta >= 0 ? 'positive' : 'negative'}>{movement.quantityDelta > 0 ? '+' : ''}{movement.quantityDelta}</td><td className={movement.reservedQuantityDelta >= 0 ? 'positive' : 'negative'}>{movement.reservedQuantityDelta > 0 ? '+' : ''}{movement.reservedQuantityDelta}</td><td>{movement.quantityBefore} → {movement.quantityAfter}</td><td>{movement.reason}</td></tr>)}
         </tbody></table></div>}
       </section>
     </>

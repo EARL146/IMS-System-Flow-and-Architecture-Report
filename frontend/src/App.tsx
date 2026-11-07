@@ -9,6 +9,15 @@ import { ProductsPage } from './pages/ProductsPage'
 import { SuppliersPage } from './pages/SuppliersPage'
 import { Storefront } from './pages/Storefront'
 import { WarehousesPage } from './pages/WarehousesPage'
+import { CustomerLoginPage, CustomerRegisterPage } from './pages/CustomerAuthPages'
+import {
+  CustomerAccountHome,
+  CustomerAddressesPage,
+  CustomerCartPage,
+  CustomerLayout,
+  CustomerOrderDetailPage,
+  CustomerOrdersPage,
+} from './pages/CustomerPages'
 
 function RequireStaff({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -29,11 +38,28 @@ function RequireRoles({ roles, children }: { roles: string[]; children: React.Re
   return children
 }
 
+function RequireCustomer({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth()
+  if (loading) return <div className="page-state">Restoring your session…</div>
+  if (!user) return <Navigate to="/login" replace />
+  if (!user.roles.includes('CUSTOMER')) return <div className="page-state">This account does not have customer access.</div>
+  return children
+}
+
 export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Storefront />} />
       <Route path="/admin/login" element={<AdminLogin />} />
+      <Route path="/login" element={<CustomerLoginPage />} />
+      <Route path="/register" element={<CustomerRegisterPage />} />
+      <Route element={<RequireCustomer><CustomerLayout /></RequireCustomer>}>
+        <Route path="cart" element={<CustomerCartPage />} />
+        <Route path="account" element={<CustomerAccountHome />} />
+        <Route path="account/addresses" element={<CustomerAddressesPage />} />
+        <Route path="account/orders" element={<CustomerOrdersPage />} />
+        <Route path="account/orders/:id" element={<CustomerOrderDetailPage />} />
+      </Route>
       <Route
         path="/admin"
         element={
