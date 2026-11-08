@@ -1,6 +1,8 @@
 package com.ims.api.customer;
 
 import com.ims.api.common.PageResponse;
+import com.ims.api.returns.ReturnDtos;
+import com.ims.api.returns.ReturnService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -29,11 +31,14 @@ public class CustomerController {
     private final CustomerAddressService addresses;
     private final CartService cart;
     private final CustomerOrderService orders;
+    private final ReturnService returns;
 
-    public CustomerController(CustomerAddressService addresses, CartService cart, CustomerOrderService orders) {
+    public CustomerController(CustomerAddressService addresses, CartService cart, CustomerOrderService orders,
+                              ReturnService returns) {
         this.addresses = addresses;
         this.cart = cart;
         this.orders = orders;
+        this.returns = returns;
     }
 
     @GetMapping("/addresses")
@@ -124,6 +129,30 @@ public class CustomerController {
             @PathVariable @Min(1) long id,
             Authentication authentication) {
         return orders.history(id, authentication.getName());
+    }
+
+    @PostMapping("/orders/{id}/returns")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ReturnDtos.ReturnResponse requestReturn(
+            @PathVariable @Min(1) long id,
+            @Valid @RequestBody ReturnDtos.CreateReturnRequest request,
+            Authentication authentication) {
+        return returns.requestCustomerOrderReturn(id, authentication.getName(), request);
+    }
+
+    @GetMapping("/returns")
+    public PageResponse<ReturnDtos.ReturnResponse> returns(
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
+            Authentication authentication) {
+        return returns.listCustomerReturns(authentication.getName(), page, size);
+    }
+
+    @GetMapping("/returns/{id}")
+    public ReturnDtos.ReturnResponse getReturn(
+            @PathVariable @Min(1) long id,
+            Authentication authentication) {
+        return returns.getCustomerReturn(id, authentication.getName());
     }
 
     @PostMapping("/orders/{id}/cancel")

@@ -1,6 +1,8 @@
 package com.ims.api.pos;
 
 import com.ims.api.common.PageResponse;
+import com.ims.api.returns.ReturnDtos;
+import com.ims.api.returns.ReturnService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -24,9 +26,11 @@ import org.springframework.web.bind.annotation.RestController;
 @PreAuthorize("hasAnyRole('OWNER','ADMIN','CASHIER','ACCOUNTANT')")
 public class PosController {
     private final PosService pos;
+    private final ReturnService returns;
 
-    public PosController(PosService pos) {
+    public PosController(PosService pos, ReturnService returns) {
         this.pos = pos;
+        this.returns = returns;
     }
 
     @GetMapping("/config")
@@ -72,5 +76,15 @@ public class PosController {
             @Valid @RequestBody PosDtos.CreateSaleRequest request,
             Authentication authentication) {
         return pos.createSale(request, authentication.getName());
+    }
+
+    @PostMapping("/sales/{id}/returns")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAnyRole('OWNER','ADMIN','CASHIER')")
+    public ReturnDtos.ReturnResponse requestReturn(
+            @PathVariable @Min(1) long id,
+            @Valid @RequestBody ReturnDtos.CreateReturnRequest request,
+            Authentication authentication) {
+        return returns.requestPosSaleReturn(id, authentication.getName(), request);
     }
 }

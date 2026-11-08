@@ -1,4 +1,4 @@
-import { Boxes, ChartNoAxesCombined, ClipboardList, LayoutDashboard, LogOut, PackageCheck, ShoppingBag, ShoppingCart, Truck, Warehouse } from 'lucide-react'
+import { Boxes, ChartNoAxesCombined, ClipboardList, LayoutDashboard, LogOut, PackageCheck, RotateCcw, ShoppingBag, ShoppingCart, Truck, Warehouse } from 'lucide-react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 
@@ -11,6 +11,7 @@ const navItems = [
   { to: '/admin/purchasing', label: 'Purchasing', icon: PackageCheck, roles: ['OWNER', 'ADMIN', 'PURCHASING_OFFICER', 'WAREHOUSE_STAFF', 'INVENTORY_MANAGER'] },
   { to: '/admin/customer-orders', label: 'Customer orders', icon: ShoppingBag, roles: ['OWNER', 'ADMIN', 'WAREHOUSE_STAFF', 'CUSTOMER_SUPPORT', 'ACCOUNTANT', 'CASHIER'] },
   { to: '/admin/pos', label: 'Sales and POS', icon: ShoppingCart, roles: ['OWNER', 'ADMIN', 'CASHIER', 'ACCOUNTANT'] },
+  { to: '/admin/returns', label: 'Returns', icon: RotateCcw, roles: ['OWNER', 'ADMIN', 'CUSTOMER_SUPPORT', 'WAREHOUSE_STAFF', 'INVENTORY_MANAGER', 'CASHIER', 'ACCOUNTANT'] },
 ]
 
 export function AdminLayout() {

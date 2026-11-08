@@ -64,8 +64,8 @@ interface PublicWarehouse {
 }
 
 type PaymentMethod = 'CASH_ON_DELIVERY' | 'MANUAL_TRANSFER'
-type OrderStatus = 'PENDING' | 'CONFIRMED' | 'PROCESSING' | 'READY_FOR_PICKUP' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED'
-type PaymentStatus = 'UNPAID' | 'AWAITING_VERIFICATION' | 'PAID' | 'FAILED' | 'REFUNDED' | 'CANCELLED'
+type OrderStatus = 'PENDING' | 'CONFIRMED' | 'PROCESSING' | 'READY_FOR_PICKUP' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED' | 'RETURN_REQUESTED' | 'RETURNED' | 'REFUNDED'
+type PaymentStatus = 'UNPAID' | 'AWAITING_VERIFICATION' | 'PAID' | 'PARTIALLY_REFUNDED' | 'FAILED' | 'REFUNDED' | 'CANCELLED'
 
 interface OrderItem {
   id: number
@@ -146,6 +146,7 @@ export function CustomerLayout() {
           <NavLink to="/cart">Cart</NavLink>
           <NavLink to="/account/addresses">Addresses</NavLink>
           <NavLink to="/account/orders">Orders</NavLink>
+          <NavLink to="/account/returns">Returns</NavLink>
         </nav>
         <div className="customer-user-menu">
           <span className="customer-avatar"><CircleUserRound size={17} /></span>
@@ -540,7 +541,7 @@ export function CustomerOrderDetailPage() {
 
   if (loading) return <div className="customer-state">Loading order details…</div>
   if (error || !order) return <section className="customer-page"><div className="notice notice-error customer-notice">{error || 'Order not found.'}</div><Link to="/account/orders" className="secondary-button">Back to orders</Link></section>
-  return <OrderDetails order={order} history={history} />
+  return <><p><Link to="/account/returns">Request or view a return</Link></p><OrderDetails order={order} history={history} /></>
 }
 
 function OrderDetails({ order, history }: { order: CustomerOrder; history: OrderStatusHistory[] }) {

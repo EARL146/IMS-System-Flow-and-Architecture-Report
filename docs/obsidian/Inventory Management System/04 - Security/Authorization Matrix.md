@@ -6,6 +6,8 @@ status: implemented-partial
 
 # Authorization Matrix
 
+Return actions follow distinct staff roles: customer support reviews requests, warehouse staff or inventory managers record inspection dispositions, and cashiers or accountants record external refunds. Customers can only see their own order returns. The API enforces these roles and ownership checks.
+
 | Capability | Owner | Admin | Inventory | Purchasing | Warehouse | Cashier | Accountant | Support | Customer |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Business settings | all business | scoped | no | no | no | no | read finance | no | no |

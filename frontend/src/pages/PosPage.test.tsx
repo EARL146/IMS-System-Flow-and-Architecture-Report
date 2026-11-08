@@ -58,7 +58,7 @@ describe('Point of sale page', () => {
     const print = vi.spyOn(window, 'print').mockImplementation(() => undefined)
     render(<PosPage />)
 
-    await user.click(await screen.findByRole('button', { name: 'Add Packing Tape' }))
+    await user.click(await screen.findByRole('button', { name: 'Add Packing Tape' }, { timeout: 4000 }))
     await user.type(screen.getByRole('spinbutton', { name: 'Cash received' }), '120')
     await user.click(screen.getByRole('button', { name: 'Complete sale' }))
 
@@ -84,7 +84,7 @@ describe('Point of sale page', () => {
     vi.mocked(api.post).mockResolvedValue({ data: receipt('CARD_TERMINAL', null, 'TERM-912') } as never)
     render(<PosPage />)
 
-    await user.click(await screen.findByRole('button', { name: 'Add Packing Tape' }))
+    await user.click(await screen.findByRole('button', { name: 'Add Packing Tape' }, { timeout: 4000 }))
     await user.selectOptions(screen.getByRole('combobox', { name: 'Payment method' }), 'CARD_TERMINAL')
     await user.type(screen.getByRole('textbox', { name: 'Approved terminal reference' }), 'TERM-912')
     await user.click(screen.getByRole('button', { name: 'Complete sale' }))

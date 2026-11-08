@@ -294,4 +294,50 @@ public class InventoryService {
                 before, after, idempotencyKey, "Point-of-sale transaction " + saleNumber,
                 "POS_SALE", saleNumber, BigDecimal.ZERO));
     }
+
+    @Transactional
+    public void recordReturnInspectionStock(
+            long productId,
+            long warehouseId,
+            BigDecimal restockQuantity,
+            BigDecimal damagedQuantity,
+            String actorEmail,
+            String restockIdempotencyKey,
+            String damagedIdempotencyKey,
+            String returnNumber
+    ) {
+        Product product = products.findById(productId)
+                .orElseThrow(() -> ApiException.notFound("Product not found"));
+        if (product.getTrackingType() == TrackingType.NONE) return;
+        if (restockQuantity.signum() < 0 || damagedQuantity.signum() < 0) {
+            throw new IllegalArgumentException("Return disposition quantities cannot be negative");
+        }
+        if (restockQuantity.signum() == 0 && damagedQuantity.signum() == 0) return;
+
+        Warehouse warehouse = warehouses.findById(warehouseId)
+                .orElseThrow(() -> ApiException.notFound("Warehouse not found"));
+        InventoryBalance balance = balances.findForUpdate(productId, warehouseId)
+                .orElseThrow(() -> ApiException.conflict("The original inventory balance could not be found"));
+        AppUser actor = users.findByEmailIgnoreCase(actorEmail).orElseThrow(ApiException::unauthorized);
+        BigDecimal before = balance.getOnHandQuantity();
+        BigDecimal damagedBefore = balance.getDamagedQuantity();
+        BigDecimal quantityAdded = restockQuantity.add(damagedQuantity);
+        BigDecimal after = before.add(quantityAdded);
+        balance.setOnHandQuantity(after);
+        balance.setDamagedQuantity(damagedBefore.add(damagedQuantity));
+        balances.save(balance);
+
+        if (restockQuantity.signum() > 0) {
+            movements.save(new InventoryMovement(product, warehouse, actor, "RETURN_RESTOCK",
+                    restockQuantity, before, before.add(restockQuantity), restockIdempotencyKey,
+                    "Inspected return restocked " + returnNumber, "RETURN", returnNumber,
+                    BigDecimal.ZERO, BigDecimal.ZERO));
+        }
+        if (damagedQuantity.signum() > 0) {
+            movements.save(new InventoryMovement(product, warehouse, actor, "RETURN_DAMAGED",
+                    damagedQuantity, before.add(restockQuantity), after, damagedIdempotencyKey,
+                    "Inspected return quarantined as damaged " + returnNumber, "RETURN", returnNumber,
+                    BigDecimal.ZERO, damagedQuantity));
+        }
+    }
 }

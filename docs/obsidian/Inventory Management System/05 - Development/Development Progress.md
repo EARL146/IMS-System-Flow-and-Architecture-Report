@@ -20,14 +20,17 @@ status: active
 - [x] Implemented role-scoped staff order queues, audited order-status history, state-checked shipping/delivery, once-only stock consumption at delivery, and full-amount manual payment verification/collection records.
 - [x] Added customer order-progress timeline and staff order/payment management screen.
 - [x] Added cashier POS with independent sales receipts, server-priced checkout, cash change, external-terminal approval references, customer lookup, receipt printing, retry-safe requests, and locked stock deductions in the inventory ledger.
+- [x] Implemented customer-order and POS return requests, staff approval/rejection, item inspection with restock/damaged/scrap disposition, idempotent manual refund records, and inventory/payment/order ledger updates.
+- [x] Added customer return history/request UI, staff return queue/actions, POS return entry from sale history, V6 schema, and the [[../03 - API Documentation/Returns and Refunds]] operational note.
 - [x] Customer routes require the CUSTOMER role, are scoped to the authenticated user, and return 403 for denied staff roles.
-- [x] Frontend production build and all 14 UI tests pass; backend compiles and all 30 tests pass, including POS cashier/payment/stock and role checks.
+- [x] Backend compiles and all 31 backend tests pass, including return ownership, approval, disposition, refund, and idempotency coverage.
+- [x] Frontend production build passes and all 16 UI tests pass, including the customer/staff returns pages and POS workflows.
 - [x] Added database setup notes, environment loader, README, and Obsidian-ready project notes.
 
 ## Pending
 - [ ] Provision MySQL credentials and verify the Flyway migration, Hibernate validation, and API startup. Current app smoke tests use H2 and disable Flyway.
 - [ ] Add permission-level RBAC, business/warehouse scopes, staff account management, persistent security audit events, login abuse limits, password recovery, and integration/security review of CSRF controls.
-- [ ] Implement email verification/password recovery, online payment-provider integration, supplier/customer returns/refunds, reporting, notifications, and support.
+- [ ] Implement email verification/password recovery, online payment-provider integration, supplier returns, reporting, notifications, and support.
 - [ ] Expand authorization, security, MySQL migration, and multi-connection concurrency coverage.
 - [ ] Configure GitHub destination/privacy before publishing.
 

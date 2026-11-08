@@ -86,7 +86,7 @@ public final class PosDtos {
                     sale.getCustomer() == null ? null : sale.getCustomer().getId(),
                     sale.getCustomer() == null ? null : sale.getCustomer().getEmail(),
                     sale.getCustomer() == null ? null : sale.getCustomer().getFullName(),
-                    sale.getPaymentMethod(), "PAID", sale.getPaymentReference(), sale.getCurrencyCode(),
+                    sale.getPaymentMethod(), sale.getPaymentStatus().name(), sale.getPaymentReference(), sale.getCurrencyCode(),
                     sale.getSubtotal(), sale.getDiscountAmount(), sale.getTaxAmount(), sale.getTotal(),
                     sale.getAmountTendered(), sale.getChangeGiven(),
                     sale.getItems().stream().map(SaleItemResponse::from).toList());

@@ -175,7 +175,7 @@ public class CustomerOrder {
             case CONFIRMED -> nextStatus == CustomerOrderStatus.PROCESSING;
             case PROCESSING -> nextStatus == CustomerOrderStatus.SHIPPED;
             case READY_FOR_PICKUP, SHIPPED -> nextStatus == CustomerOrderStatus.DELIVERED;
-            case DELIVERED, CANCELLED -> false;
+            case DELIVERED, CANCELLED, RETURN_REQUESTED, RETURNED, REFUNDED -> false;
         };
         if (!allowed) {
             throw new IllegalStateException("Order cannot move from " + status + " to " + nextStatus);
@@ -193,6 +193,38 @@ public class CustomerOrder {
             throw new IllegalStateException("This order is already paid");
         }
         paymentStatus = PaymentStatus.PAID;
+    }
+
+    public void startReturnRequest() {
+        if (status != CustomerOrderStatus.DELIVERED && status != CustomerOrderStatus.RETURNED
+                && status != CustomerOrderStatus.RETURN_REQUESTED) {
+            throw new IllegalStateException("Only a delivered order can be returned");
+        }
+        if (paymentStatus != PaymentStatus.PAID && paymentStatus != PaymentStatus.PARTIALLY_REFUNDED) {
+            throw new IllegalStateException("An unpaid order cannot be returned for a refund");
+        }
+        status = CustomerOrderStatus.RETURN_REQUESTED;
+    }
+
+    public void restoreStatusAfterRejectedReturn(boolean hasOtherPendingReturn, boolean hasCompletedReturn) {
+        if (status != CustomerOrderStatus.RETURN_REQUESTED || hasOtherPendingReturn) return;
+        status = hasCompletedReturn ? CustomerOrderStatus.RETURNED : CustomerOrderStatus.DELIVERED;
+    }
+
+    public void markReturnInspected(boolean hasPendingReturn) {
+        if (status == CustomerOrderStatus.RETURN_REQUESTED || status == CustomerOrderStatus.DELIVERED
+                || status == CustomerOrderStatus.RETURNED) {
+            status = hasPendingReturn ? CustomerOrderStatus.RETURN_REQUESTED : CustomerOrderStatus.RETURNED;
+        }
+    }
+
+    public void applyRefundStatus(PaymentStatus nextPaymentStatus) {
+        if (nextPaymentStatus != PaymentStatus.PARTIALLY_REFUNDED && nextPaymentStatus != PaymentStatus.REFUNDED) {
+            throw new IllegalArgumentException("Return settlement requires a refund payment status");
+        }
+        paymentStatus = nextPaymentStatus;
+        status = nextPaymentStatus == PaymentStatus.REFUNDED
+                ? CustomerOrderStatus.REFUNDED : CustomerOrderStatus.RETURNED;
     }
 
     public Long getId() { return id; }

@@ -1,4 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
+import { ReturnsAdminPage } from './pages/ReturnsAdminPage'
+import { CustomerReturnsPage } from './pages/CustomerReturnsPage'
 import { useAuth } from './auth/AuthContext'
 import { AdminLayout } from './pages/AdminLayout'
 import { AdminLogin } from './pages/AdminLogin'
@@ -61,6 +63,7 @@ export default function App() {
         <Route path="account/addresses" element={<CustomerAddressesPage />} />
         <Route path="account/orders" element={<CustomerOrdersPage />} />
         <Route path="account/orders/:id" element={<CustomerOrderDetailPage />} />
+        <Route path="/account/returns" element={<CustomerReturnsPage />} />
       </Route>
       <Route
         path="/admin"
@@ -78,6 +81,7 @@ export default function App() {
         <Route path="purchasing" element={<RequireRoles roles={['OWNER', 'ADMIN', 'PURCHASING_OFFICER', 'WAREHOUSE_STAFF', 'INVENTORY_MANAGER']}><PurchaseOrdersPage /></RequireRoles>} />
         <Route path="customer-orders" element={<RequireRoles roles={['OWNER', 'ADMIN', 'WAREHOUSE_STAFF', 'CUSTOMER_SUPPORT', 'ACCOUNTANT', 'CASHIER']}><CustomerOrdersAdminPage /></RequireRoles>} />
         <Route path="pos" element={<RequireRoles roles={['OWNER', 'ADMIN', 'CASHIER', 'ACCOUNTANT']}><PosPage /></RequireRoles>} />
+        <Route path="returns" element={<RequireRoles roles={['OWNER', 'ADMIN', 'CUSTOMER_SUPPORT', 'WAREHOUSE_STAFF', 'INVENTORY_MANAGER', 'CASHIER', 'ACCOUNTANT']}><ReturnsAdminPage /></RequireRoles>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

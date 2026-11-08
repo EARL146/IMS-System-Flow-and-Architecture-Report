@@ -45,6 +45,9 @@ public class InventoryMovement {
     @Column(name = "reserved_quantity_delta", nullable = false, precision = 18, scale = 3)
     private BigDecimal reservedQuantityDelta = BigDecimal.ZERO;
 
+    @Column(name = "damaged_quantity_delta", nullable = false, precision = 18, scale = 3)
+    private BigDecimal damagedQuantityDelta = BigDecimal.ZERO;
+
     @Column(name = "quantity_before", nullable = false, precision = 18, scale = 3)
     private BigDecimal quantityBefore;
 
@@ -115,6 +118,25 @@ public class InventoryMovement {
             String referenceId,
             BigDecimal reservedQuantityDelta
     ) {
+        this(product, warehouse, actor, movementType, quantityDelta, quantityBefore, quantityAfter,
+                idempotencyKey, reason, referenceType, referenceId, reservedQuantityDelta, BigDecimal.ZERO);
+    }
+
+    public InventoryMovement(
+            Product product,
+            Warehouse warehouse,
+            AppUser actor,
+            String movementType,
+            BigDecimal quantityDelta,
+            BigDecimal quantityBefore,
+            BigDecimal quantityAfter,
+            String idempotencyKey,
+            String reason,
+            String referenceType,
+            String referenceId,
+            BigDecimal reservedQuantityDelta,
+            BigDecimal damagedQuantityDelta
+    ) {
         this.product = product;
         this.warehouse = warehouse;
         this.actor = actor;
@@ -127,6 +149,7 @@ public class InventoryMovement {
         this.referenceType = referenceType;
         this.referenceId = referenceId;
         this.reservedQuantityDelta = reservedQuantityDelta;
+        this.damagedQuantityDelta = damagedQuantityDelta;
     }
 
     public Long getId() {
@@ -151,6 +174,10 @@ public class InventoryMovement {
 
     public BigDecimal getReservedQuantityDelta() {
         return reservedQuantityDelta;
+    }
+
+    public BigDecimal getDamagedQuantityDelta() {
+        return damagedQuantityDelta;
     }
 
     public BigDecimal getQuantityBefore() {

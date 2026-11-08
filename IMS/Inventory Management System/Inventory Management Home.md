@@ -7,7 +7,7 @@ status: active
 # Inventory Management System
 
 > [!info] Project state
-> The catalog, inventory foundation, supplier and purchase-receiving workflow, customer cart/checkout/order slice, staff fulfillment/payment recording, and cashier POS are implemented. All 30 backend tests, 14 frontend UI tests, and the production frontend build pass. MySQL migration verification and later commerce/operations modules remain.
+> The catalog, inventory foundation, supplier and purchase-receiving workflow, customer checkout/order slice, staff fulfillment/payment recording, cashier POS, and customer/POS returns are implemented. All 31 backend tests, all 16 frontend UI tests, and the production build pass. MySQL migration verification and later modules remain.
 
 ## Project
 - Vision: [[00 - Project Overview/Project Vision]]
@@ -25,12 +25,13 @@ status: active
 - Inventory ledger: [[02 - Database/Inventory Ledger]]
 - API status: [[03 - API Documentation/API Overview]]
 - POS workflow: [[03 - API Documentation/Point of Sale]]
+- Returns and refunds: [[03 - API Documentation/Returns and Refunds]]
 - Testing: [[06 - Testing/Testing Strategy]]
 - Deployment: [[07 - Deployment/Deployment Guide]]
 
 ## Verified environment
-- Node.js 24.13.0 / npm 11.12.1; production build passes and 14 UI tests pass
-- Java 21.0.11 / Maven Wrapper 3.9.16; all 30 backend tests pass, including POS workflow/security checks
+- Node.js 24.13.0 / npm 11.12.1; production build and all 16 UI tests pass
+- Java 21.0.11 / Maven Wrapper 3.9.16; all 31 backend tests pass
 - AMPPS MySQL 8.0.45; port 3306 listens locally; app credentials are not provisioned
 - AMPPS phpMyAdmin uses cookie authentication
 - Maven is not installed globally; use Maven Wrapper
@@ -43,10 +44,11 @@ status: active
 - [x] Customer registration/login, addresses, cart, server-priced checkout, stock reservation, order history, and pending-order cancellation
 - [x] Staff order fulfillment, customer order tracking, and auditable manual payment recording
 - [x] Cashier POS with stock-checked receipts, payment capture, and browser printing
-- [ ] Online payment-provider integration, returns/refunds, reporting, support, and notifications
+- [x] Customer and POS returns with review, inspection dispositions, inventory movements, and recorded refunds
+- [ ] Online payment-provider integration, supplier returns, reporting, support, and notifications
 - [ ] Complete permission administration and business/warehouse boundaries
 - [x] Supplier records, purchase-order approvals, and partial receiving
-- [ ] Supplier returns, customer returns, reports, and support
+- [ ] Supplier returns, reports, and support
 - [ ] Run MySQL integration verification and security review
 
 See [[05 - Development/Development Progress]].

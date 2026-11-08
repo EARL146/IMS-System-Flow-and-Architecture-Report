@@ -1,6 +1,7 @@
 package com.ims.api.pos;
 
 import com.ims.api.auth.AppUser;
+import com.ims.api.customer.PaymentStatus;
 import com.ims.api.warehouse.Warehouse;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -51,6 +52,10 @@ public class PosSale {
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_method", nullable = false, length = 32)
     private PosPaymentMethod paymentMethod;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_status", nullable = false, length = 32)
+    private PaymentStatus paymentStatus = PaymentStatus.PAID;
 
     @Column(name = "payment_reference", length = 100)
     private String paymentReference;
@@ -111,12 +116,20 @@ public class PosSale {
         items.add(item);
     }
 
+    public void applyRefundStatus(PaymentStatus nextPaymentStatus) {
+        if (nextPaymentStatus != PaymentStatus.PARTIALLY_REFUNDED && nextPaymentStatus != PaymentStatus.REFUNDED) {
+            throw new IllegalArgumentException("Return settlement requires a refund payment status");
+        }
+        paymentStatus = nextPaymentStatus;
+    }
+
     public Long getId() { return id; }
     public String getSaleNumber() { return saleNumber; }
     public AppUser getCashier() { return cashier; }
     public Warehouse getWarehouse() { return warehouse; }
     public AppUser getCustomer() { return customer; }
     public PosPaymentMethod getPaymentMethod() { return paymentMethod; }
+    public PaymentStatus getPaymentStatus() { return paymentStatus; }
     public String getPaymentReference() { return paymentReference; }
     public String getCurrencyCode() { return currencyCode; }
     public BigDecimal getSubtotal() { return subtotal; }

@@ -93,4 +93,8 @@ public class InventoryBalance {
     public void setReservedQuantity(BigDecimal reservedQuantity) {
         this.reservedQuantity = reservedQuantity;
     }
+
+    public void setDamagedQuantity(BigDecimal damagedQuantity) {
+        this.damagedQuantity = damagedQuantity;
+    }
 }

@@ -11,6 +11,10 @@ import com.ims.api.common.ApiException;
 import com.ims.api.inventory.InventoryBalance;
 import com.ims.api.inventory.InventoryBalanceRepository;
 import com.ims.api.inventory.InventoryMovementRepository;
+import com.ims.api.returns.ReturnDtos;
+import com.ims.api.returns.ReturnRefundMethod;
+import com.ims.api.returns.ReturnService;
+import com.ims.api.returns.ReturnStatus;
 import com.ims.api.warehouse.Warehouse;
 import com.ims.api.warehouse.WarehouseRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,6 +47,7 @@ class CustomerCheckoutIntegrationTest {
     @Autowired private WarehouseRepository warehouses;
     @Autowired private InventoryBalanceRepository balances;
     @Autowired private InventoryMovementRepository movements;
+    @Autowired private ReturnService returns;
 
     private String customerEmail;
     private String otherCustomerEmail;
@@ -195,6 +200,59 @@ class CustomerCheckoutIntegrationTest {
 
         assertEquals(1, orders.history(created.id(), customerEmail).size());
         assertThrows(ApiException.class, () -> orders.history(created.id(), otherCustomerEmail));
+    }
+
+    @Test
+    void customerReturnRequiresReviewSeparatesDamagedStockAndRecordsCappedRefundIdempotently() {
+        cart.add(customerEmail, new CustomerDtos.AddCartItemRequest(product.getId(), new BigDecimal("2.000")));
+        CustomerDtos.OrderResponse created = orders.checkout(customerEmail, new CustomerDtos.CheckoutRequest(
+                UUID.randomUUID(), address.id(), warehouse.getId(), PaymentMethod.CASH_ON_DELIVERY, null));
+        transition(created.id(), CustomerOrderStatus.CONFIRMED);
+        transition(created.id(), CustomerOrderStatus.PROCESSING);
+        transition(created.id(), CustomerOrderStatus.SHIPPED);
+        CustomerDtos.OrderResponse delivered = transition(created.id(), CustomerOrderStatus.DELIVERED);
+        adminOrders.verifyPayment(created.id(), new OrderManagementDtos.PaymentVerificationRequest(
+                UUID.randomUUID(), delivered.total(), "CASH-RETURN-TEST", "Collected at delivery"), staffEmail);
+
+        long sourceItemId = delivered.items().getFirst().id();
+        UUID requestKey = UUID.randomUUID();
+        ReturnDtos.CreateReturnRequest request = new ReturnDtos.CreateReturnRequest(requestKey, "Wrong size", null,
+                java.util.List.of(new ReturnDtos.RequestedLine(sourceItemId, new BigDecimal("1.000"))));
+        ReturnDtos.ReturnResponse requested = returns.requestCustomerOrderReturn(created.id(), customerEmail, request);
+        ReturnDtos.ReturnResponse replay = returns.requestCustomerOrderReturn(created.id(), customerEmail, request);
+        assertEquals(requested.id(), replay.id());
+        assertEquals(ReturnStatus.REQUESTED, requested.status());
+        assertThrows(ApiException.class, () -> returns.getCustomerReturn(requested.id(), otherCustomerEmail));
+        assertThrows(ApiException.class, () -> returns.requestCustomerOrderReturn(created.id(), customerEmail,
+                new ReturnDtos.CreateReturnRequest(UUID.randomUUID(), "Too many", null,
+                        java.util.List.of(new ReturnDtos.RequestedLine(sourceItemId, new BigDecimal("2.000"))))));
+
+        long returnItemId = requested.items().getFirst().id();
+        ReturnDtos.ReturnResponse approved = returns.approve(requested.id(), new ReturnDtos.ApproveReturnRequest(
+                java.util.List.of(new ReturnDtos.ApprovedLine(returnItemId, new BigDecimal("1.000")))), staffEmail);
+        assertEquals(ReturnStatus.APPROVED, approved.status());
+        ReturnDtos.ReturnResponse inspected = returns.inspect(requested.id(), new ReturnDtos.InspectReturnRequest(
+                java.util.List.of(new ReturnDtos.InspectionLine(returnItemId,
+                        new BigDecimal("0.500"), new BigDecimal("0.500"), BigDecimal.ZERO.setScale(3)))), staffEmail);
+        assertEquals(ReturnStatus.INSPECTED, inspected.status());
+        assertEquals(0, new BigDecimal("12.5000").compareTo(inspected.refundAmount()));
+        assertEquals(0, new BigDecimal("4.000").compareTo(stock().getOnHandQuantity()));
+        assertEquals(0, new BigDecimal("0.500").compareTo(stock().getDamagedQuantity()));
+        assertEquals(0, new BigDecimal("3.500").compareTo(stock().getAvailableQuantity()));
+
+        ReturnDtos.RefundRequest refundRequest = new ReturnDtos.RefundRequest(UUID.randomUUID(),
+                ReturnRefundMethod.CASH, null, "Cash returned to customer");
+        ReturnDtos.ReturnResponse refunded = returns.refund(requested.id(), refundRequest, staffEmail);
+        ReturnDtos.ReturnResponse refundReplay = returns.refund(requested.id(), refundRequest, staffEmail);
+        assertEquals(ReturnStatus.REFUNDED, refunded.status());
+        assertEquals(refunded.refund().refundNumber(), refundReplay.refund().refundNumber());
+        assertEquals(PaymentStatus.PARTIALLY_REFUNDED, adminOrders.get(created.id()).paymentStatus());
+        assertEquals(1, movements.findAll().stream().filter(movement ->
+                movement.getMovementType().equals("RETURN_RESTOCK")
+                        && refunded.returnNumber().equals(movement.getReferenceId())).count());
+        assertEquals(1, movements.findAll().stream().filter(movement ->
+                movement.getMovementType().equals("RETURN_DAMAGED")
+                        && refunded.returnNumber().equals(movement.getReferenceId())).count());
     }
 
     private CustomerDtos.OrderResponse transition(long orderId, CustomerOrderStatus status) {
