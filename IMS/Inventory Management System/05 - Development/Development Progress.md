@@ -21,16 +21,18 @@ status: active
 - [x] Added customer order-progress timeline and staff order/payment management screen.
 - [x] Added cashier POS with independent sales receipts, server-priced checkout, cash change, external-terminal approval references, customer lookup, receipt printing, retry-safe requests, and locked stock deductions in the inventory ledger.
 - [x] Implemented customer-order and POS return requests, staff approval/rejection, item inspection with restock/damaged/scrap disposition, idempotent manual refund records, and inventory/payment/order ledger updates.
+- [x] Added supplier returns against received purchase lines, active quantity reservations, approval/rejection, stock-safe dispatch movements, damaged-stock handling, and manual supplier credit-note records.
+- [x] Purchase-order cancellation now requires an audited reason, can release unreceived quantities after supplier send, and records the released commitment while retaining received stock and receipt history.
 - [x] Added customer return history/request UI, staff return queue/actions, POS return entry from sale history, V6 schema, and the [[../03 - API Documentation/Returns and Refunds]] operational note.
 - [x] Customer routes require the CUSTOMER role, are scoped to the authenticated user, and return 403 for denied staff roles.
-- [x] Backend compiles and all 31 backend tests pass, including return ownership, approval, disposition, refund, and idempotency coverage.
-- [x] Frontend production build passes and all 16 UI tests pass, including the customer/staff returns pages and POS workflows.
+- [x] Backend compiles and all 35 backend tests pass, including customer/supplier return approval, inventory disposition/dispatch, manual credit/refund records, idempotency, and purchase cancellation coverage.
+- [x] Frontend production build passes and all 18 UI tests pass, including supplier return creation and purchase cancellation screens.
 - [x] Added database setup notes, environment loader, README, and Obsidian-ready project notes.
 
 ## Pending
 - [ ] Provision MySQL credentials and verify the Flyway migration, Hibernate validation, and API startup. Current app smoke tests use H2 and disable Flyway.
 - [ ] Add permission-level RBAC, business/warehouse scopes, staff account management, persistent security audit events, login abuse limits, password recovery, and integration/security review of CSRF controls.
-- [ ] Implement email verification/password recovery, online payment-provider integration, supplier returns, reporting, notifications, and support.
+- [ ] Implement email verification/password recovery, online payment-provider integration, supplier performance reports, business reports, notifications, and support.
 - [ ] Expand authorization, security, MySQL migration, and multi-connection concurrency coverage.
 - [ ] Configure GitHub destination/privacy before publishing.
 

@@ -36,12 +36,17 @@ interface PurchaseOrder {
   expectedDate: string | null
   notes: string | null
   rejectionReason: string | null
+  cancellationReason: string | null
+  cancelledBy: string | null
+  cancelledAt: string | null
+  cancelledUnreceivedValue: number
   createdBy: string
   reviewedBy: string | null
   reviewedAt: string | null
   orderedAt: string | null
   createdAt: string
   total: number
+  receivedValue: number
   items: PurchaseOrderItem[]
 }
 
@@ -96,6 +101,7 @@ export function PurchaseOrdersPage() {
   const [receiveOpen, setReceiveOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
+  const [cancelReason, setCancelReason] = useState('')
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
 
@@ -144,11 +150,12 @@ export function PurchaseOrdersPage() {
     setNotice('')
     try {
       const path = '/admin/purchase-orders/' + selected.id + '/' + action
-      const { data } = action === 'reject'
-        ? await api.post<PurchaseOrder>(path, { reason: rejectReason.trim() })
+      const { data } = action === 'reject' || action === 'cancel'
+        ? await api.post<PurchaseOrder>(path, { reason: action === 'reject' ? rejectReason.trim() : cancelReason.trim() })
         : await api.post<PurchaseOrder>(path, {})
       setSelected(data)
       setRejectReason('')
+      setCancelReason('')
       setNotice('Purchase order ' + statusLabels[data.status].toLowerCase() + '.')
       await loadOrders(data.id)
     } catch (requestError) {
@@ -229,6 +236,7 @@ export function PurchaseOrdersPage() {
       {selected && <section className="panel purchase-detail">
         <div className="panel-heading"><div><div className="eyebrow">{selected.orderNumber}</div><h2>Order details</h2><p>{selected.supplierName} · {selected.warehouseName} · Created by {selected.createdBy}</p></div><span className={'status-pill status-' + selected.status.toLowerCase().replaceAll('_', '-')}>{statusLabels[selected.status]}</span></div>
         {selected.rejectionReason && <div className="notice notice-error purchase-notice">Rejected: {selected.rejectionReason}</div>}
+        {selected.cancellationReason && <div className="purchase-notes"><strong>Cancellation:</strong> {selected.cancellationReason} · cancelled by {selected.cancelledBy ?? 'staff'}{selected.cancelledAt ? ' on ' + new Date(selected.cancelledAt).toLocaleString() : ''}<br /><strong>Unreceived commitment released:</strong> {money(selected.cancelledUnreceivedValue, selected.currencyCode)} · <strong>Received value retained:</strong> {money(selected.receivedValue, selected.currencyCode)}</div>}
         <div className="table-wrap"><table><thead><tr><th>Product</th><th>Ordered</th><th>Received</th><th>Outstanding</th><th>Unit cost</th><th>Line total</th></tr></thead>
           <tbody>{selected.items.map((item) => <tr key={item.id}><td><strong>{item.description}</strong><small>{item.sku}</small></td><td>{item.orderedQuantity}</td><td>{item.receivedQuantity}</td><td>{item.outstandingQuantity}</td><td>{money(item.unitCost, selected.currencyCode)}</td><td>{money(item.lineTotal, selected.currencyCode)}</td></tr>)}</tbody>
         </table></div>
@@ -241,7 +249,7 @@ export function PurchaseOrdersPage() {
             <button className="secondary-button" disabled={busy || rejectReason.trim().length === 0} onClick={() => void performAction('reject')}>Reject</button>
           </>}
           {selected.status === 'APPROVED' && canPurchase && <button className="primary-button" disabled={busy} onClick={() => void performAction('send')}><Send size={15} /> Mark sent to supplier</button>}
-          {['DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED'].includes(selected.status) && canApprove && <button className="secondary-button" disabled={busy} onClick={() => { if (window.confirm('Cancel this purchase order?')) void performAction('cancel') }}>Cancel order</button>}
+          {['DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'ORDERED', 'PARTIALLY_RECEIVED'].includes(selected.status) && canApprove && <><input aria-label="Cancellation reason" placeholder="Required cancellation reason" maxLength={500} value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} /><button className="secondary-button" disabled={busy || !cancelReason.trim()} onClick={() => void performAction('cancel')}>{['ORDERED', 'PARTIALLY_RECEIVED'].includes(selected.status) ? 'Cancel unreceived quantities' : 'Cancel order'}</button></>}
           {['ORDERED', 'PARTIALLY_RECEIVED'].includes(selected.status) && canReceive && <button className="primary-button" disabled={busy} onClick={() => setReceiveOpen(true)}><PackageCheck size={16} /> Receive goods</button>}
         </div>
       </section>}

@@ -140,9 +140,9 @@ public class PurchaseOrderService {
     }
 
     @Transactional
-    public PurchaseOrderDtos.Response cancel(long id) {
+    public PurchaseOrderDtos.Response cancel(long id, String actorEmail, PurchaseOrderDtos.CancelRequest request) {
         PurchaseOrder order = loadForUpdate(id);
-        transition(order, PurchaseOrder::cancel);
+        transition(order, value -> value.cancel(requireUser(actorEmail), clock.instant(), request.reason().trim()));
         return PurchaseOrderDtos.Response.from(order);
     }
 

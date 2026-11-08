@@ -7,6 +7,7 @@ import { AdminLogin } from './pages/AdminLogin'
 import { DashboardPage } from './pages/DashboardPage'
 import { InventoryPage } from './pages/InventoryPage'
 import { PurchaseOrdersPage } from './pages/PurchaseOrdersPage'
+import { SupplierReturnsPage } from './pages/SupplierReturnsPage'
 import { CustomerOrdersAdminPage } from './pages/CustomerOrdersAdminPage'
 import { PosPage } from './pages/PosPage'
 import { ProductsPage } from './pages/ProductsPage'
@@ -79,6 +80,7 @@ export default function App() {
         <Route path="warehouses" element={<RequireRoles roles={['OWNER', 'ADMIN']}><WarehousesPage /></RequireRoles>} />
         <Route path="suppliers" element={<RequireRoles roles={['OWNER', 'ADMIN', 'PURCHASING_OFFICER']}><SuppliersPage /></RequireRoles>} />
         <Route path="purchasing" element={<RequireRoles roles={['OWNER', 'ADMIN', 'PURCHASING_OFFICER', 'WAREHOUSE_STAFF', 'INVENTORY_MANAGER']}><PurchaseOrdersPage /></RequireRoles>} />
+        <Route path="supplier-returns" element={<RequireRoles roles={['OWNER', 'ADMIN', 'PURCHASING_OFFICER', 'WAREHOUSE_STAFF', 'INVENTORY_MANAGER', 'ACCOUNTANT']}><SupplierReturnsPage /></RequireRoles>} />
         <Route path="customer-orders" element={<RequireRoles roles={['OWNER', 'ADMIN', 'WAREHOUSE_STAFF', 'CUSTOMER_SUPPORT', 'ACCOUNTANT', 'CASHIER']}><CustomerOrdersAdminPage /></RequireRoles>} />
         <Route path="pos" element={<RequireRoles roles={['OWNER', 'ADMIN', 'CASHIER', 'ACCOUNTANT']}><PosPage /></RequireRoles>} />
         <Route path="returns" element={<RequireRoles roles={['OWNER', 'ADMIN', 'CUSTOMER_SUPPORT', 'WAREHOUSE_STAFF', 'INVENTORY_MANAGER', 'CASHIER', 'ACCOUNTANT']}><ReturnsAdminPage /></RequireRoles>} />

@@ -91,6 +91,19 @@ describe('Purchasing pages', () => {
     expect(await screen.findAllByText('Partially received')).toHaveLength(2)
   })
 
+  it('requires a reason to cancel unreceived quantities after an order is sent', async () => {
+    authState.roles = ['ADMIN']
+    const user = userEvent.setup()
+    render(<PurchaseOrdersPage />)
+    await user.click(await screen.findByRole('button', { name: 'View' }))
+    await user.type(screen.getByRole('textbox', { name: 'Cancellation reason' }), 'Supplier cancellation agreed')
+    await user.click(screen.getByRole('button', { name: 'Cancel unreceived quantities' }))
+
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/admin/purchase-orders/21/cancel', {
+      reason: 'Supplier cancellation agreed',
+    }))
+  })
+
   it('creates a draft order from active supplier, warehouse and product data', async () => {
     authState.roles = ['PURCHASING_OFFICER']
     const user = userEvent.setup()

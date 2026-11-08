@@ -73,6 +73,19 @@ public class PurchaseOrder {
     @Column(name = "ordered_at")
     private Instant orderedAt;
 
+    @Column(name = "cancellation_reason", length = 500)
+    private String cancellationReason;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cancelled_by_user_id")
+    private AppUser cancelledBy;
+
+    @Column(name = "cancelled_at")
+    private Instant cancelledAt;
+
+    @Column(name = "cancelled_unreceived_value", nullable = false, precision = 19, scale = 4)
+    private BigDecimal cancelledUnreceivedValue = BigDecimal.ZERO;
+
     @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;
@@ -137,11 +150,22 @@ public class PurchaseOrder {
         orderedAt = at;
     }
 
-    public void cancel() {
-        if (status != PurchaseOrderStatus.DRAFT && status != PurchaseOrderStatus.PENDING_APPROVAL
-                && status != PurchaseOrderStatus.APPROVED && status != PurchaseOrderStatus.REJECTED) {
-            throw new IllegalStateException("An order cannot be cancelled after it has been sent to the supplier");
+    public void cancel(AppUser actor, Instant at, String reason) {
+        if (status == PurchaseOrderStatus.CANCELLED || status == PurchaseOrderStatus.RECEIVED
+                || items.stream().allMatch(item -> item.getOutstandingQuantity().signum() == 0)) {
+            throw new IllegalStateException("A purchase order with no outstanding quantity cannot be cancelled");
         }
+        if (status != PurchaseOrderStatus.DRAFT && status != PurchaseOrderStatus.PENDING_APPROVAL
+                && status != PurchaseOrderStatus.APPROVED && status != PurchaseOrderStatus.REJECTED
+                && status != PurchaseOrderStatus.ORDERED && status != PurchaseOrderStatus.PARTIALLY_RECEIVED) {
+            throw new IllegalStateException("This purchase order cannot be cancelled in its current state");
+        }
+        cancelledUnreceivedValue = items.stream()
+                .map(item -> item.getOutstandingQuantity().multiply(item.getUnitCost()))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        cancellationReason = reason;
+        cancelledBy = actor;
+        cancelledAt = at;
         status = PurchaseOrderStatus.CANCELLED;
     }
 
@@ -162,6 +186,11 @@ public class PurchaseOrder {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
+    public BigDecimal getReceivedValue() {
+        return items.stream().map(item -> item.getUnitCost().multiply(item.getReceivedQuantity()))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
     public Long getId() { return id; }
     public String getOrderNumber() { return orderNumber; }
     public Supplier getSupplier() { return supplier; }
@@ -175,6 +204,10 @@ public class PurchaseOrder {
     public AppUser getReviewedBy() { return reviewedBy; }
     public Instant getReviewedAt() { return reviewedAt; }
     public Instant getOrderedAt() { return orderedAt; }
+    public String getCancellationReason() { return cancellationReason; }
+    public AppUser getCancelledBy() { return cancelledBy; }
+    public Instant getCancelledAt() { return cancelledAt; }
+    public BigDecimal getCancelledUnreceivedValue() { return cancelledUnreceivedValue; }
     public Instant getCreatedAt() { return createdAt; }
     public List<PurchaseOrderItem> getItems() { return items; }
 }

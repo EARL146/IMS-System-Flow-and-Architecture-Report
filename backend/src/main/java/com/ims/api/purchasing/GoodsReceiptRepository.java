@@ -8,4 +8,6 @@ import java.util.Optional;
 public interface GoodsReceiptRepository extends JpaRepository<GoodsReceipt, Long> {
     @EntityGraph(attributePaths = {"purchaseOrder", "receivedBy", "items", "items.purchaseOrderItem", "items.purchaseOrderItem.product"})
     Optional<GoodsReceipt> findByIdempotencyKey(String idempotencyKey);
+
+    long countByPurchaseOrderId(long purchaseOrderId);
 }

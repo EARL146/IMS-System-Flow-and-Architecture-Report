@@ -9,6 +9,7 @@ const navItems = [
   { to: '/admin/warehouses', label: 'Warehouses', icon: Warehouse, roles: ['OWNER', 'ADMIN'] },
   { to: '/admin/suppliers', label: 'Suppliers', icon: Truck, roles: ['OWNER', 'ADMIN', 'PURCHASING_OFFICER'] },
   { to: '/admin/purchasing', label: 'Purchasing', icon: PackageCheck, roles: ['OWNER', 'ADMIN', 'PURCHASING_OFFICER', 'WAREHOUSE_STAFF', 'INVENTORY_MANAGER'] },
+  { to: '/admin/supplier-returns', label: 'Supplier returns', icon: RotateCcw, roles: ['OWNER', 'ADMIN', 'PURCHASING_OFFICER', 'WAREHOUSE_STAFF', 'INVENTORY_MANAGER', 'ACCOUNTANT'] },
   { to: '/admin/customer-orders', label: 'Customer orders', icon: ShoppingBag, roles: ['OWNER', 'ADMIN', 'WAREHOUSE_STAFF', 'CUSTOMER_SUPPORT', 'ACCOUNTANT', 'CASHIER'] },
   { to: '/admin/pos', label: 'Sales and POS', icon: ShoppingCart, roles: ['OWNER', 'ADMIN', 'CASHIER', 'ACCOUNTANT'] },
   { to: '/admin/returns', label: 'Returns', icon: RotateCcw, roles: ['OWNER', 'ADMIN', 'CUSTOMER_SUPPORT', 'WAREHOUSE_STAFF', 'INVENTORY_MANAGER', 'CASHIER', 'ACCOUNTANT'] },

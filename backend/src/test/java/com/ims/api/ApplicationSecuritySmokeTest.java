@@ -149,4 +149,16 @@ class ApplicationSecuritySmokeTest {
         mvc.perform(get("/api/v1/admin/pos/sales"))
                 .andExpect(status().isForbidden());
     }
+
+    @Test
+    @WithMockUser(roles = "WAREHOUSE_STAFF")
+    void warehouseStaffCanReadSupplierReturnsButCannotCreateThem() throws Exception {
+        mvc.perform(get("/api/v1/admin/supplier-returns"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray());
+        mvc.perform(post("/api/v1/admin/supplier-returns")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"idempotencyKey\":\"4bb9d55d-1cc6-4892-a2d8-9735d22cedba\",\"purchaseOrderId\":1,\"reason\":\"Damaged shipment\",\"items\":[{\"purchaseOrderItemId\":1,\"quantity\":1,\"damagedQuantity\":1}]}"))
+                .andExpect(status().isForbidden());
+    }
 }

@@ -77,8 +77,10 @@ public class PurchaseOrderController {
 
     @PostMapping("/{id}/cancel")
     @PreAuthorize("hasAnyRole('OWNER','ADMIN')")
-    public PurchaseOrderDtos.Response cancel(@PathVariable @Min(1) long id) {
-        return orders.cancel(id);
+    public PurchaseOrderDtos.Response cancel(@PathVariable @Min(1) long id,
+                                              @Valid @RequestBody PurchaseOrderDtos.CancelRequest request,
+                                              Authentication authentication) {
+        return orders.cancel(id, authentication.getName(), request);
     }
 
     @PostMapping("/{id}/receive")

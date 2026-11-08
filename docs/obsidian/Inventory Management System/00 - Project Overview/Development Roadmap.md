@@ -12,7 +12,7 @@ status: active
 4. [x] Spring API foundation, validation, errors, and OpenAPI.
 5. [ ] Finish authentication hardening, permission RBAC, object scopes, audit logging, and abuse protection.
 6. [~] Product/category/warehouse and inventory ledger slices exist; extend product tracking/editor and verify against MySQL.
-7. [~] Supplier records, purchase approvals, and partial receiving implemented; supplier returns remain.
+7. [~] Supplier records, purchase approvals, partial receiving, supplier returns, and audited purchase cancellation implemented; supplier performance reporting and MySQL verification remain.
 8. [~] Live catalog, customer registration/login, saved addresses, persistent cart, server-priced checkout, stock reservation, order history/status tracking, pending cancellation, auditable manual payment verification, and customer returns/refunds are implemented.
 9. [~] Staff order fulfillment, once-only stock deduction at delivery, cashier POS receipts/stock deduction, POS returns, inspection disposition, and manual refund records are implemented; provider integrations and sales reporting remain.
 10. [ ] Reports, support, notifications, exports, security tests, deployment, backup, and recovery.

@@ -162,6 +162,64 @@ public class InventoryService {
     }
 
     @Transactional
+    public void dispatchSupplierReturnStock(
+            long productId,
+            long warehouseId,
+            BigDecimal quantity,
+            BigDecimal damagedQuantity,
+            String actorEmail,
+            String idempotencyKey,
+            String returnNumber,
+            Long returnItemId
+    ) {
+        if (quantity.signum() <= 0 || quantity.stripTrailingZeros().scale() > 3
+                || damagedQuantity.signum() < 0 || damagedQuantity.compareTo(quantity) > 0
+                || damagedQuantity.stripTrailingZeros().scale() > 3) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Supplier return quantities are invalid");
+        }
+
+        Product product = products.findById(productId)
+                .orElseThrow(() -> ApiException.notFound("Product not found"));
+        Warehouse warehouse = warehouses.findById(warehouseId)
+                .orElseThrow(() -> ApiException.notFound("Warehouse not found"));
+        if (product.getTrackingType() == TrackingType.NONE) return;
+
+        if (idempotencyKeys.reserveIfAbsent(idempotencyKey) == 0) {
+            InventoryMovement existing = movements.findByIdempotencyKey(idempotencyKey)
+                    .orElseThrow(() -> new IllegalStateException("Supplier return movement idempotency reservation has no movement"));
+            boolean sameRequest = existing.getMovementType().equals("SUPPLIER_RETURN")
+                    && existing.getProduct().getId().equals(productId)
+                    && existing.getWarehouse().getId().equals(warehouseId)
+                    && existing.getQuantityDelta().compareTo(quantity.negate()) == 0
+                    && existing.getDamagedQuantityDelta().compareTo(damagedQuantity.negate()) == 0
+                    && java.util.Objects.equals(existing.getReferenceId(), returnItemId.toString());
+            if (!sameRequest) {
+                throw ApiException.conflict("Inventory idempotency key was already used for a different supplier return movement");
+            }
+            return;
+        }
+
+        InventoryBalance balance = balances.findForUpdate(productId, warehouseId)
+                .orElseThrow(() -> ApiException.conflict("There is not enough stock to dispatch this supplier return"));
+        BigDecimal sellableQuantity = quantity.subtract(damagedQuantity);
+        if (balance.getOnHandQuantity().subtract(quantity).compareTo(balance.getReservedQuantity()) < 0
+                || balance.getDamagedQuantity().compareTo(damagedQuantity) < 0
+                || balance.getAvailableQuantity().compareTo(sellableQuantity) < 0) {
+            throw ApiException.conflict("There is not enough unreserved stock in the selected condition to dispatch this supplier return");
+        }
+
+        AppUser actor = users.findByEmailIgnoreCase(actorEmail).orElseThrow(ApiException::unauthorized);
+        BigDecimal before = balance.getOnHandQuantity();
+        BigDecimal after = before.subtract(quantity);
+        balance.setOnHandQuantity(after);
+        balance.setDamagedQuantity(balance.getDamagedQuantity().subtract(damagedQuantity));
+        balances.save(balance);
+        movements.save(new InventoryMovement(product, warehouse, actor, "SUPPLIER_RETURN", quantity.negate(),
+                before, after, idempotencyKey, "Supplier return dispatched " + returnNumber,
+                "SUPPLIER_RETURN", returnItemId.toString(), BigDecimal.ZERO, damagedQuantity.negate()));
+    }
+
+    @Transactional
     public void reserveCustomerOrderStock(
             long productId,
             long warehouseId,

@@ -109,7 +109,7 @@ class PurchaseOrderWorkflowIntegrationTest {
         var finalStock = balances.findAllForWarehouse(warehouse.getId(), PageRequest.of(0, 10)).getContent();
         assertEquals(0, new BigDecimal("10.000").compareTo(finalStock.getFirst().getOnHandQuantity()));
         assertEquals(2, movements.findRecentForWarehouse(warehouse.getId(), PageRequest.of(0, 10)).getTotalElements());
-        assertEquals(2, receipts.count());
+        assertEquals(2, receipts.countByPurchaseOrderId(draft.id()));
     }
 
     @Test
@@ -131,6 +131,36 @@ class PurchaseOrderWorkflowIntegrationTest {
                 receiver.getEmail()));
         assertEquals(PurchaseOrderStatus.ORDERED, purchaseOrders.get(draft.id()).status());
         assertEquals(0, balances.findAllForWarehouse(warehouse.getId(), PageRequest.of(0, 10)).getTotalElements());
+    }
+
+    @Test
+    void cancellingPartiallyReceivedOrderReleasesOnlyUnreceivedCommitment() {
+        PurchaseOrderDtos.Response draft = purchaseOrders.create(
+                new PurchaseOrderDtos.CreateRequest(supplier.getId(), warehouse.getId(), "PHP", null, null,
+                        List.of(new PurchaseOrderDtos.LineRequest(product.getId(), new BigDecimal("10.000"), new BigDecimal("10.2500")))),
+                buyer.getEmail());
+        purchaseOrders.submit(draft.id());
+        purchaseOrders.approve(draft.id(), approver.getEmail());
+        PurchaseOrderDtos.Response ordered = purchaseOrders.markOrdered(draft.id());
+        purchaseOrders.receive(draft.id(), new PurchaseOrderDtos.ReceiveRequest(UUID.randomUUID(), "DELIVERY-CANCEL",
+                null, List.of(new PurchaseOrderDtos.ReceiveLineRequest(ordered.items().getFirst().id(), new BigDecimal("4.000")))),
+                receiver.getEmail());
+
+        PurchaseOrderDtos.Response cancelled = purchaseOrders.cancel(draft.id(), approver.getEmail(),
+                new PurchaseOrderDtos.CancelRequest("Supplier confirmed remaining units are unavailable"));
+        assertEquals(PurchaseOrderStatus.CANCELLED, cancelled.status());
+        assertEquals(0, new BigDecimal("41.0000").compareTo(cancelled.receivedValue()));
+        assertEquals(0, new BigDecimal("61.5000").compareTo(cancelled.cancelledUnreceivedValue()));
+        assertEquals("Supplier confirmed remaining units are unavailable", cancelled.cancellationReason());
+        assertEquals(approver.getEmail(), cancelled.cancelledBy());
+
+        var stock = balances.findAllForWarehouse(warehouse.getId(), PageRequest.of(0, 10)).getContent();
+        assertEquals(0, new BigDecimal("4.000").compareTo(stock.getFirst().getOnHandQuantity()));
+        assertEquals(1, movements.findRecentForWarehouse(warehouse.getId(), PageRequest.of(0, 10)).getTotalElements());
+        assertThrows(ApiException.class, () -> purchaseOrders.receive(draft.id(),
+                new PurchaseOrderDtos.ReceiveRequest(UUID.randomUUID(), "LATE-DELIVERY", null,
+                        List.of(new PurchaseOrderDtos.ReceiveLineRequest(ordered.items().getFirst().id(), new BigDecimal("1.000")))),
+                receiver.getEmail()));
     }
 
     private AppUser saveUser(String email) {

@@ -39,6 +39,9 @@ public final class PurchaseOrderDtos {
     public record RejectRequest(@NotBlank @Size(max = 500) String reason) {
     }
 
+    public record CancelRequest(@NotBlank @Size(max = 500) String reason) {
+    }
+
     public record ReceiveRequest(
             @NotNull UUID idempotencyKey,
             @Size(max = 100) String deliveryReference,
@@ -71,6 +74,8 @@ public final class PurchaseOrderDtos {
             String warehouseName, PurchaseOrderStatus status, String currencyCode, LocalDate expectedDate,
             String notes, String rejectionReason, String createdBy, String reviewedBy,
             Instant reviewedAt, Instant orderedAt, Instant createdAt, BigDecimal total,
+            BigDecimal receivedValue, String cancellationReason, String cancelledBy, Instant cancelledAt,
+            BigDecimal cancelledUnreceivedValue,
             List<ItemResponse> items
     ) {
         static Response from(PurchaseOrder order) {
@@ -80,6 +85,9 @@ public final class PurchaseOrderDtos {
                     order.getRejectionReason(), order.getCreatedBy().getEmail(),
                     order.getReviewedBy() == null ? null : order.getReviewedBy().getEmail(),
                     order.getReviewedAt(), order.getOrderedAt(), order.getCreatedAt(), order.getTotal(),
+                    order.getReceivedValue(), order.getCancellationReason(),
+                    order.getCancelledBy() == null ? null : order.getCancelledBy().getEmail(),
+                    order.getCancelledAt(), order.getCancelledUnreceivedValue(),
                     order.getItems().stream().map(ItemResponse::from).toList());
         }
     }
