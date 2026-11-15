@@ -63,4 +63,12 @@ public interface InventoryBalanceRepository extends JpaRepository<InventoryBalan
 
     @Query("select coalesce(sum(balance.onHandQuantity - balance.reservedQuantity - balance.damagedQuantity), 0) from InventoryBalance balance")
     BigDecimal totalAvailable();
+
+    @Query("""
+            select balance from InventoryBalance balance
+            join fetch balance.product
+            join fetch balance.warehouse
+            order by balance.warehouse.name, balance.product.name
+            """)
+    List<InventoryBalance> findAllDetailed();
 }

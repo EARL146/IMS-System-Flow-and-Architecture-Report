@@ -1,5 +1,6 @@
 package com.ims.api.auth;
 
+import com.ims.api.warehouse.Warehouse;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -15,6 +16,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.HashSet;
@@ -39,6 +41,12 @@ public class AppUser implements UserDetails {
     @Column(nullable = false)
     private boolean enabled = true;
 
+    @Column(name = "failed_login_attempts", nullable = false)
+    private int failedLoginAttempts = 0;
+
+    @Column(name = "locked_until")
+    private Instant lockedUntil;
+
     @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;
@@ -48,6 +56,12 @@ public class AppUser implements UserDetails {
             joinColumns = @JoinColumn(name = "user_id"),
             inverseJoinColumns = @JoinColumn(name = "role_id"))
     private Set<Role> roles = new HashSet<>();
+
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(name = "user_warehouse_scopes",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "warehouse_id"))
+    private Set<Warehouse> assignedWarehouses = new HashSet<>();
 
     protected AppUser() {
     }
@@ -71,12 +85,73 @@ public class AppUser implements UserDetails {
         return fullName;
     }
 
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
+    }
+
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    public int getFailedLoginAttempts() {
+        return failedLoginAttempts;
+    }
+
+    public Instant getLockedUntil() {
+        return lockedUntil;
+    }
+
+    public boolean isLockedAt(Instant now) {
+        return lockedUntil != null && lockedUntil.isAfter(now);
+    }
+
+    public boolean recordFailedLogin(Instant now, int maxAttempts, Duration lockDuration) {
+        this.failedLoginAttempts += 1;
+        if (this.failedLoginAttempts >= maxAttempts) {
+            this.lockedUntil = now.plus(lockDuration);
+            return true;
+        }
+        return false;
+    }
+
+    public void resetFailedLogins() {
+        this.failedLoginAttempts = 0;
+        this.lockedUntil = null;
+    }
+
     public Set<Role> getRoles() {
         return roles;
     }
 
     public void addRole(Role role) {
         roles.add(role);
+    }
+
+    public void setRoles(Collection<Role> nextRoles) {
+        this.roles.clear();
+        this.roles.addAll(nextRoles);
+    }
+
+    public Set<Warehouse> getAssignedWarehouses() {
+        return assignedWarehouses;
+    }
+
+    public void setAssignedWarehouses(Collection<Warehouse> warehouses) {
+        this.assignedWarehouses.clear();
+        this.assignedWarehouses.addAll(warehouses);
+    }
+
+    public boolean canAccessWarehouse(long warehouseId) {
+        boolean hasGlobalRole = roles.stream().anyMatch(role ->
+                "OWNER".equals(role.getCode()) || "ADMIN".equals(role.getCode()) || "SUPER_ADMIN".equals(role.getCode()));
+        if (hasGlobalRole || assignedWarehouses.isEmpty()) {
+            return true;
+        }
+        return assignedWarehouses.stream().anyMatch(warehouse -> warehouse.getId().equals(warehouseId));
     }
 
     public Instant getCreatedAt() {

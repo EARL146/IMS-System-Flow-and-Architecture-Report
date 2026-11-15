@@ -6,10 +6,12 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Duration;
@@ -48,6 +50,30 @@ public class AuthController {
             @CookieValue(name = REFRESH_COOKIE, required = false) String refreshToken) {
         authService.logout(refreshToken);
         return ResponseEntity.noContent().header(HttpHeaders.SET_COOKIE, clearRefreshCookie().toString()).build();
+    }
+
+    @PostMapping("/change-password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void changePassword(
+            @Valid @RequestBody AuthDtos.ChangePasswordRequest request,
+            Authentication authentication
+    ) {
+        authService.changePassword(authentication.getName(), request);
+    }
+
+    @PostMapping("/password-reset/request")
+    public AuthDtos.PasswordResetTokenResponse requestPasswordReset(
+            @Valid @RequestBody AuthDtos.PasswordResetRequest request
+    ) {
+        return authService.requestPasswordReset(request);
+    }
+
+    @PostMapping("/password-reset/confirm")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void confirmPasswordReset(
+            @Valid @RequestBody AuthDtos.PasswordResetConfirmRequest request
+    ) {
+        authService.confirmPasswordReset(request);
     }
 
     private ResponseEntity<AuthDtos.TokenResponse> tokenResponse(AuthDtos.TokenBundle bundle) {

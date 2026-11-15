@@ -22,7 +22,13 @@ import {
   CustomerLayout,
   CustomerOrderDetailPage,
   CustomerOrdersPage,
+  CustomerSupportPage,
 } from './pages/CustomerPages'
+import {
+  ReportsAdminPage,
+  SupportTicketsAdminPage,
+  UsersAndAuditAdminPage,
+} from './pages/OperationsAdminPages'
 
 function RequireStaff({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -65,6 +71,7 @@ export default function App() {
         <Route path="account/orders" element={<CustomerOrdersPage />} />
         <Route path="account/orders/:id" element={<CustomerOrderDetailPage />} />
         <Route path="/account/returns" element={<CustomerReturnsPage />} />
+        <Route path="/account/support" element={<CustomerSupportPage />} />
       </Route>
       <Route
         path="/admin"
@@ -84,6 +91,9 @@ export default function App() {
         <Route path="customer-orders" element={<RequireRoles roles={['OWNER', 'ADMIN', 'WAREHOUSE_STAFF', 'CUSTOMER_SUPPORT', 'ACCOUNTANT', 'CASHIER']}><CustomerOrdersAdminPage /></RequireRoles>} />
         <Route path="pos" element={<RequireRoles roles={['OWNER', 'ADMIN', 'CASHIER', 'ACCOUNTANT']}><PosPage /></RequireRoles>} />
         <Route path="returns" element={<RequireRoles roles={['OWNER', 'ADMIN', 'CUSTOMER_SUPPORT', 'WAREHOUSE_STAFF', 'INVENTORY_MANAGER', 'CASHIER', 'ACCOUNTANT']}><ReturnsAdminPage /></RequireRoles>} />
+        <Route path="support-tickets" element={<RequireRoles roles={['OWNER', 'ADMIN', 'CUSTOMER_SUPPORT', 'WAREHOUSE_STAFF', 'INVENTORY_MANAGER', 'CASHIER', 'ACCOUNTANT']}><SupportTicketsAdminPage /></RequireRoles>} />
+        <Route path="reports" element={<RequireRoles roles={['OWNER', 'ADMIN', 'ACCOUNTANT', 'INVENTORY_MANAGER', 'PURCHASING_OFFICER']}><ReportsAdminPage /></RequireRoles>} />
+        <Route path="security" element={<RequireRoles roles={['OWNER', 'ADMIN']}><UsersAndAuditAdminPage /></RequireRoles>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

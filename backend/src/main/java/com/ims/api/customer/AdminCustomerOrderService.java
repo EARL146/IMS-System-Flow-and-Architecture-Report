@@ -1,11 +1,14 @@
 package com.ims.api.customer;
 
+import com.ims.api.audit.SecurityAuditService;
 import com.ims.api.auth.AppUser;
 import com.ims.api.auth.AppUserRepository;
 import com.ims.api.common.ApiException;
 import com.ims.api.common.PageResponse;
 import com.ims.api.inventory.InventoryService;
+import com.ims.api.notifications.NotificationService;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,19 +22,25 @@ public class AdminCustomerOrderService {
     private final CustomerPaymentVerificationRepository paymentVerifications;
     private final AppUserRepository users;
     private final InventoryService inventory;
+    private final NotificationService notifications;
+    private final SecurityAuditService auditService;
 
     public AdminCustomerOrderService(
             CustomerOrderRepository orders,
             CustomerOrderStatusHistoryRepository statusHistory,
             CustomerPaymentVerificationRepository paymentVerifications,
             AppUserRepository users,
-            InventoryService inventory
+            InventoryService inventory,
+            NotificationService notifications,
+            SecurityAuditService auditService
     ) {
         this.orders = orders;
         this.statusHistory = statusHistory;
         this.paymentVerifications = paymentVerifications;
         this.users = users;
         this.inventory = inventory;
+        this.notifications = notifications;
+        this.auditService = auditService;
     }
 
     @Transactional(readOnly = true)
@@ -62,13 +71,16 @@ public class AdminCustomerOrderService {
     ) {
         AppUser actor = requireUser(actorEmail);
         CustomerOrder order = lockDetailed(orderId);
+        if (!actor.canAccessWarehouse(order.getWarehouse().getId())) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Your account is not scoped to operate on this order's warehouse");
+        }
         if (request.status() == order.getStatus()) {
             return CustomerDtos.OrderResponse.from(order);
         }
-        if (request.status() == CustomerOrderStatus.SHIPPED
+        if ((request.status() == CustomerOrderStatus.SHIPPED || request.status() == CustomerOrderStatus.READY_FOR_PICKUP)
                 && order.getPaymentMethod() == PaymentMethod.MANUAL_TRANSFER
                 && order.getPaymentStatus() != PaymentStatus.PAID) {
-            throw ApiException.conflict("Verify the manual transfer before shipping this order");
+            throw ApiException.conflict("Verify the manual transfer before shipping or preparing this order for pickup");
         }
 
         CustomerOrderStatus previousStatus = order.getStatus();
@@ -89,6 +101,18 @@ public class AdminCustomerOrderService {
         statusHistory.save(new CustomerOrderStatusHistory(order, previousStatus, request.status(), actor,
                 clean(request.note())));
         orders.saveAndFlush(order);
+
+        notifications.notifyUser(
+                order.getCustomer(),
+                "ORDER_UPDATE",
+                "Order " + order.getOrderNumber() + " moved to " + request.status().name().replace('_', ' '),
+                "Your order " + order.getOrderNumber() + " status is now " + request.status().name().replace('_', ' ') + ".",
+                "CUSTOMER_ORDER",
+                order.getOrderNumber()
+        );
+        auditService.record("ORDER_STATUS_CHANGED", actorEmail, "CUSTOMER_ORDER", order.getOrderNumber(),
+                "Order " + order.getOrderNumber() + " moved from " + previousStatus + " to " + request.status());
+
         return CustomerDtos.OrderResponse.from(order);
     }
 
@@ -137,6 +161,18 @@ public class AdminCustomerOrderService {
                 new CustomerPaymentVerification(order, verifier, order.getPaymentMethod(), order.getCurrencyCode(),
                         request.amount(), clean(request.reference()), clean(request.notes()), key));
         orders.saveAndFlush(order);
+
+        notifications.notifyUser(
+                order.getCustomer(),
+                "PAYMENT_VERIFIED",
+                "Payment verified for " + order.getOrderNumber(),
+                "Your payment of " + order.getCurrencyCode() + " " + request.amount() + " for order " + order.getOrderNumber() + " has been verified.",
+                "CUSTOMER_ORDER",
+                order.getOrderNumber()
+        );
+        auditService.record("ORDER_PAYMENT_VERIFIED", actorEmail, "CUSTOMER_ORDER", order.getOrderNumber(),
+                "Payment verified for order " + order.getOrderNumber() + " (" + order.getCurrencyCode() + " " + request.amount() + ")");
+
         return OrderManagementDtos.PaymentVerificationResponse.from(verification);
     }
 

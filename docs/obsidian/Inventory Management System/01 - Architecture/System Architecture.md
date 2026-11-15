@@ -1,21 +1,21 @@
 ---
 title: System Architecture
 tags: [ims, architecture]
-status: planned
+status: implemented-partial
 ---
 
 # System Architecture
 
-```mermaid
-flowchart LR
-  Customer[Customer portal] -->|HTTPS JSON API| API[Spring Boot API]
-  Admin[Admin and POS application] -->|HTTPS JSON API| API
-  API --> Security[Spring Security / RBAC]
-  API --> Services[Domain services]
-  Services --> DB[(MySQL 8)]
-  Flyway[Flyway migrations] --> DB
-  Services --> Ledger[Inventory movement ledger]
-  POS[Cashier sales] -->|locked stock deduction| Ledger
-```
+![[System Architecture.png]]
 
-Frontend clients use `/api/v1`. Controllers accept and return DTOs; services enforce business rules and authorization; repositories access MySQL. Flyway is the schema authority. See [[Backend Architecture]] and [[Frontend Architecture]].
+Editable vector: [[System Architecture.svg]].
+
+## Request path
+
+Customer and staff browser pages are built with React, TypeScript, and Vite. They call the Spring Boot API under `/api/v1`. Spring Security authenticates requests and applies role checks. Controllers validate DTOs, services enforce business rules in transactions, and JPA repositories persist to MySQL.
+
+Inventory changes update the locked balance projection and the movement ledger in the same transaction. Flyway migrations define schema changes. V1–V7 are authored; verification against the local MySQL server remains pending.
+
+Supplier credits, refunds, and payment verification are recorded from staff-entered references. No payment gateway or accounts-payable system is connected.
+
+See [[Backend Architecture]], [[Frontend Architecture]], and [[../03 - API Documentation/Supplier Returns]].

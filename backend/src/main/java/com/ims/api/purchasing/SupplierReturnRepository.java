@@ -29,5 +29,9 @@ public interface SupplierReturnRepository extends JpaRepository<SupplierReturn, 
     @Query("select supplierReturn from SupplierReturn supplierReturn order by supplierReturn.requestedAt desc, supplierReturn.id desc")
     Page<SupplierReturn> findRecent(Pageable pageable);
 
+    @EntityGraph(attributePaths = {"purchaseOrder", "purchaseOrder.supplier", "items", "items.purchaseOrderItem", "creditNotes"})
+    @Query("select distinct supplierReturn from SupplierReturn supplierReturn")
+    List<SupplierReturn> findAllDetailed();
+
     Optional<SupplierReturn> findByIdempotencyKey(String idempotencyKey);
 }

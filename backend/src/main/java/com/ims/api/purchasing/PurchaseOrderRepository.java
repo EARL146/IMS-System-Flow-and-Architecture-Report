@@ -9,9 +9,13 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, Long> {
+    @EntityGraph(attributePaths = {"supplier", "warehouse", "createdBy", "reviewedBy", "items", "items.product"})
+    @Query("select distinct purchaseOrder from PurchaseOrder purchaseOrder order by purchaseOrder.createdAt desc")
+    List<PurchaseOrder> findAllDetailed();
     @EntityGraph(attributePaths = {"supplier", "warehouse", "createdBy", "reviewedBy", "items", "items.product"})
     @Query("select distinct purchaseOrder from PurchaseOrder purchaseOrder where purchaseOrder.id = :id")
     Optional<PurchaseOrder> findDetailedById(@Param("id") Long id);

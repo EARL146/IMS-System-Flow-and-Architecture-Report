@@ -63,6 +63,7 @@ interface PublicWarehouse {
   name: string
 }
 
+type FulfillmentType = 'DELIVERY' | 'STORE_PICKUP'
 type PaymentMethod = 'CASH_ON_DELIVERY' | 'MANUAL_TRANSFER'
 type OrderStatus = 'PENDING' | 'CONFIRMED' | 'PROCESSING' | 'READY_FOR_PICKUP' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED' | 'RETURN_REQUESTED' | 'RETURNED' | 'REFUNDED'
 type PaymentStatus = 'UNPAID' | 'AWAITING_VERIFICATION' | 'PAID' | 'PARTIALLY_REFUNDED' | 'FAILED' | 'REFUNDED' | 'CANCELLED'
@@ -147,6 +148,7 @@ export function CustomerLayout() {
           <NavLink to="/account/addresses">Addresses</NavLink>
           <NavLink to="/account/orders">Orders</NavLink>
           <NavLink to="/account/returns">Returns</NavLink>
+          <NavLink to="/account/support">Support</NavLink>
         </nav>
         <div className="customer-user-menu">
           <span className="customer-avatar"><CircleUserRound size={17} /></span>
@@ -166,6 +168,7 @@ export function CustomerCartPage() {
   const [warehouses, setWarehouses] = useState<PublicWarehouse[]>([])
   const [selectedAddress, setSelectedAddress] = useState('')
   const [selectedWarehouse, setSelectedWarehouse] = useState('')
+  const [fulfillmentType, setFulfillmentType] = useState<FulfillmentType>('DELIVERY')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH_ON_DELIVERY')
   const [notes, setNotes] = useState('')
   const [drafts, setDrafts] = useState<Record<number, string>>({})
@@ -224,6 +227,7 @@ export function CustomerCartPage() {
       if (previous) {
         const saved = JSON.parse(previous) as CustomerCheckoutRequest
         if (saved.addressId === payload.addressId && saved.warehouseId === payload.warehouseId
+          && saved.fulfillmentType === payload.fulfillmentType
           && saved.paymentMethod === payload.paymentMethod && saved.notes === payload.notes) {
           return saved.idempotencyKey
         }
@@ -238,14 +242,15 @@ export function CustomerCartPage() {
 
   async function checkout(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!selectedAddress || !selectedWarehouse) return
+    if ((fulfillmentType === 'DELIVERY' && !selectedAddress) || !selectedWarehouse) return
     setSubmitting(true)
     setError('')
-    const checkoutDetails = {
-      addressId: Number(selectedAddress),
+    const checkoutDetails: Omit<CustomerCheckoutRequest, 'idempotencyKey'> = {
+      addressId: selectedAddress ? Number(selectedAddress) : null,
       warehouseId: Number(selectedWarehouse),
       paymentMethod,
       notes: notes.trim() || null,
+      ...(fulfillmentType === 'STORE_PICKUP' ? { fulfillmentType } : {}),
     }
     const payload = { ...checkoutDetails, idempotencyKey: pendingCheckoutKey(checkoutDetails) }
     try {
@@ -308,19 +313,20 @@ export function CustomerCartPage() {
           <form className="panel checkout-panel" onSubmit={(event) => void checkout(event)}>
             <div className="panel-heading"><div><h2>Delivery and payment</h2><p>Choose where and how this order is fulfilled.</p></div></div>
             <div className="checkout-fields">
-              {addresses.length ? (
+              <label>Fulfillment method<select value={fulfillmentType} onChange={(event) => setFulfillmentType(event.target.value as FulfillmentType)}><option value="DELIVERY">Home delivery</option><option value="STORE_PICKUP">Store pickup (no shipping fee)</option></select></label>
+              {fulfillmentType === 'DELIVERY' && (addresses.length ? (
                 <label>Delivery address<select required value={selectedAddress} onChange={(event) => setSelectedAddress(event.target.value)}>{addresses.map((address) => <option key={address.id} value={address.id}>{address.label} · {address.addressLine1}, {address.city}</option>)}</select></label>
               ) : (
-                <div className="checkout-empty-hint"><MapPin size={17} /><span>Add a delivery address before checkout.</span><Link to="/account/addresses">Manage addresses</Link></div>
-              )}
+                <div className="checkout-empty-hint"><MapPin size={17} /><span>Add a delivery address before checkout, or choose Store pickup.</span><Link to="/account/addresses">Manage addresses</Link></div>
+              ))}
               {warehouses.length ? (
                 <label>Fulfillment location<select required value={selectedWarehouse} onChange={(event) => setSelectedWarehouse(event.target.value)}>{warehouses.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>)}</select></label>
               ) : <div className="notice notice-error">No active fulfillment locations are available.</div>}
-              <label>Payment method<select value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value as PaymentMethod)}><option value="CASH_ON_DELIVERY">Cash on delivery</option><option value="MANUAL_TRANSFER">Manual bank transfer</option></select></label>
-              <label>Order notes <span className="optional-label">Optional</span><textarea rows={3} maxLength={1000} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Delivery instructions or other details" /></label>
+              <label>Payment method<select value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value as PaymentMethod)}><option value="CASH_ON_DELIVERY">{fulfillmentType === 'STORE_PICKUP' ? 'Pay at pickup (Cash)' : 'Cash on delivery'}</option><option value="MANUAL_TRANSFER">Manual bank transfer</option></select></label>
+              <label>Order notes <span className="optional-label">Optional</span><textarea rows={3} maxLength={1000} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Delivery or pickup instructions" /></label>
               <div className="checkout-total-row"><span>Current cart subtotal</span><strong>{money(cart?.subtotal ?? 0)}</strong></div>
-              <p className="checkout-payment-note">{paymentMethod === 'MANUAL_TRANSFER' ? 'Transfer instructions will need to be confirmed by the store. This order will not be marked paid automatically.' : 'Cash will be collected when your order is delivered.'}</p>
-              <button className="primary-button full-button" type="submit" disabled={submitting || !hasProducts || addresses.length === 0 || warehouses.length === 0}>
+              <p className="checkout-payment-note">{paymentMethod === 'MANUAL_TRANSFER' ? 'Transfer instructions will need to be confirmed by the store. This order will not be marked paid automatically.' : fulfillmentType === 'STORE_PICKUP' ? 'Payment will be collected when you pick up your order at the selected warehouse.' : 'Cash will be collected when your order is delivered.'}</p>
+              <button className="primary-button full-button" type="submit" disabled={submitting || !hasProducts || (fulfillmentType === 'DELIVERY' && addresses.length === 0) || warehouses.length === 0}>
                 {submitting ? 'Placing order…' : 'Place order'}
               </button>
               <small className="checkout-stock-note">Available stock is checked again and reserved during checkout.</small>
@@ -333,8 +339,9 @@ export function CustomerCartPage() {
 }
 
 interface CustomerCheckoutRequest {
-  addressId: number
+  addressId: number | null
   warehouseId: number
+  fulfillmentType?: FulfillmentType
   paymentMethod: PaymentMethod
   notes: string | null
   idempotencyKey: string
@@ -566,5 +573,215 @@ function paymentText(method: PaymentMethod, status: PaymentStatus) {
 }
 
 export function CustomerAccountHome() {
-  return <div className="customer-page"><div className="page-title-row customer-title-row"><div><div className="eyebrow">CUSTOMER ACCOUNT</div><h1>Your account</h1><p>Manage your orders and delivery addresses.</p></div></div><div className="account-shortcuts"><Link to="/account/orders" className="panel account-shortcut"><ClipboardList size={22} /><strong>Order history</strong><span>Review status, payment, and delivery details.</span><ArrowRight size={16} /></Link><Link to="/account/addresses" className="panel account-shortcut"><MapPin size={22} /><strong>Saved addresses</strong><span>Update your delivery information.</span><ArrowRight size={16} /></Link><Link to="/cart" className="panel account-shortcut"><ShoppingBag size={22} /><strong>Your cart</strong><span>Review items and place an order.</span><ArrowRight size={16} /></Link></div></div>
+  const [notifications, setNotifications] = useState<Array<{ id: number; title: string; message: string; read: boolean; createdAt: string }>>([])
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [pwMessage, setPwMessage] = useState('')
+  const [pwError, setPwError] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    api.get<{ unreadCount: number; items: Array<{ id: number; title: string; message: string; read: boolean; createdAt: string }> }>('/notifications')
+      .then(({ data }) => {
+        if (active) {
+          setNotifications(data.items)
+          setUnreadCount(data.unreadCount)
+        }
+      })
+      .catch(() => undefined)
+    return () => { active = false }
+  }, [])
+
+  async function markAllRead() {
+    try {
+      await api.post('/notifications/read-all')
+      setUnreadCount(0)
+      setNotifications((curr) => curr.map((item) => ({ ...item, read: true })))
+    } catch {
+      // ignore
+    }
+  }
+
+  async function changePassword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setPwMessage('')
+    setPwError(false)
+    try {
+      await api.post('/auth/change-password', { currentPassword, newPassword })
+      setCurrentPassword('')
+      setNewPassword('')
+      setPwMessage('Password updated and other sessions revoked.')
+    } catch (error) {
+      setPwError(true)
+      setPwMessage(getErrorMessage(error, 'Password could not be updated.'))
+    }
+  }
+
+  return (
+    <div className="customer-page">
+      <div className="page-title-row customer-title-row"><div><div className="eyebrow">CUSTOMER ACCOUNT</div><h1>Your account</h1><p>Manage your orders, delivery addresses, notifications, and support requests.</p></div></div>
+      <div className="account-shortcuts">
+        <Link to="/account/orders" className="panel account-shortcut"><ClipboardList size={22} /><strong>Order history</strong><span>Review status, payment, and delivery details.</span><ArrowRight size={16} /></Link>
+        <Link to="/account/addresses" className="panel account-shortcut"><MapPin size={22} /><strong>Saved addresses</strong><span>Update your delivery information.</span><ArrowRight size={16} /></Link>
+        <Link to="/cart" className="panel account-shortcut"><ShoppingBag size={22} /><strong>Your cart</strong><span>Review items and place an order.</span><ArrowRight size={16} /></Link>
+        <Link to="/account/support" className="panel account-shortcut"><PackageCheck size={22} /><strong>Customer support</strong><span>Open or reply to support tickets.</span><ArrowRight size={16} /></Link>
+      </div>
+      <div className="address-layout" style={{ marginTop: '1.5rem' }}>
+        <section className="panel address-list-panel">
+          <div className="panel-heading">
+            <div><h2>Notifications</h2><p>{unreadCount} unread</p></div>
+            {unreadCount > 0 && <button className="secondary-button" onClick={() => void markAllRead()}>Mark all read</button>}
+          </div>
+          {notifications.length === 0 ? <div className="inline-empty">No notifications yet.</div> : (
+            <div className="address-card-list">
+              {notifications.map((n) => (
+                <article className="address-card" key={n.id}>
+                  <div className="address-card-info">
+                    <div><strong>{n.title}</strong>{!n.read && <span className="status-pill status-live">New</span>}</div>
+                    <span>{n.message}</span>
+                    <small>{new Date(n.createdAt).toLocaleString()}</small>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+        <form className="panel address-form-panel" onSubmit={(event) => void changePassword(event)}>
+          <div className="panel-heading"><div><h2>Change password</h2><p>Updating your password revokes other active sessions.</p></div></div>
+          {pwMessage && <div className={'notice ' + (pwError ? 'notice-error' : 'notice-success')}>{pwMessage}</div>}
+          <div className="address-form-fields">
+            <label>Current password<input type="password" required minLength={8} value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} /></label>
+            <label>New password<input type="password" required minLength={10} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="At least 10 characters" /></label>
+            <button className="primary-button" type="submit">Update password</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+interface SupportMessage { id: number; authorEmail: string; authorName: string; authorRole: string; body: string; createdAt: string }
+interface SupportTicket {
+  id: number; ticketNumber: string; customerOrderId: number | null; customerOrderNumber: string | null
+  subject: string; category: string; priority: string; status: string; resolutionNotes: string | null
+  createdAt: string; messages: SupportMessage[]
+}
+
+export function CustomerSupportPage() {
+  const [tickets, setTickets] = useState<SupportTicket[]>([])
+  const [selected, setSelected] = useState<SupportTicket | null>(null)
+  const [subject, setSubject] = useState('')
+  const [category, setCategory] = useState('ORDER_INQUIRY')
+  const [priority, setPriority] = useState('NORMAL')
+  const [message, setMessage] = useState('')
+  const [reply, setReply] = useState('')
+  const [notice, setNotice] = useState('')
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  async function load(preferredId?: number) {
+    try {
+      const { data } = await api.get<PageResult<SupportTicket>>('/customer/support-tickets', { params: { page: 0, size: 50 } })
+      setTickets(data.content)
+      setSelected((curr) => data.content.find((t) => t.id === (preferredId ?? curr?.id)) ?? data.content[0] ?? null)
+    } catch (err) {
+      setError(getErrorMessage(err, 'Support tickets could not be loaded.'))
+    }
+  }
+
+  useEffect(() => { void load() }, [])
+
+  async function createTicket(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setBusy(true); setError(''); setNotice('')
+    try {
+      const { data } = await api.post<SupportTicket>('/customer/support-tickets', {
+        subject, category, priority, message,
+      })
+      setSubject(''); setMessage('')
+      setNotice('Support ticket ' + data.ticketNumber + ' created.')
+      await load(data.id)
+    } catch (err) {
+      setError(getErrorMessage(err, 'Support ticket could not be created.'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function sendReply(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!selected || !reply.trim()) return
+    setBusy(true); setError(''); setNotice('')
+    try {
+      const { data } = await api.post<SupportTicket>('/customer/support-tickets/' + selected.id + '/messages', {
+        message: reply.trim(),
+      })
+      setReply('')
+      setNotice('Reply posted.')
+      await load(data.id)
+    } catch (err) {
+      setError(getErrorMessage(err, 'Reply could not be sent.'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section className="customer-page">
+      <div className="page-title-row customer-title-row"><div><div className="eyebrow">CUSTOMER CARE</div><h1>Support tickets</h1><p>Need help with an order, pickup, or return? Open a ticket and track store responses.</p></div></div>
+      {notice && <div className="notice notice-success">{notice}</div>}
+      {error && <div className="notice notice-error">{error}</div>}
+      <div className="address-layout">
+        <section className="panel address-list-panel">
+          <div className="panel-heading"><div><h2>Your tickets</h2><p>{tickets.length} total</p></div></div>
+          {tickets.length === 0 ? <div className="inline-empty">No support tickets yet.</div> : (
+            <div className="address-card-list">
+              {tickets.map((t) => (
+                <article className="address-card" key={t.id} onClick={() => setSelected(t)} style={{ cursor: 'pointer' }}>
+                  <div className="address-card-info">
+                    <div><strong>{t.ticketNumber} · {t.subject}</strong> <span className="status-pill status-neutral">{friendly(t.status)}</span></div>
+                    <span>{friendly(t.category)} · Priority: {t.priority}</span>
+                    {t.resolutionNotes && <small>Resolution: {t.resolutionNotes}</small>}
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+          {selected && (
+            <div style={{ marginTop: '1rem', borderTop: '1px solid var(--line, #e2e8f0)', paddingTop: '1rem' }}>
+              <h3>Conversation: {selected.ticketNumber}</h3>
+              <div className="address-card-list" style={{ marginTop: '0.5rem' }}>
+                {selected.messages.map((m) => (
+                  <div key={m.id} className="address-card">
+                    <div className="address-card-info">
+                      <strong>{m.authorName} ({m.authorRole})</strong>
+                      <span>{m.body}</span>
+                      <small>{new Date(m.createdAt).toLocaleString()}</small>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {selected.status !== 'CLOSED' && (
+                <form onSubmit={(event) => void sendReply(event)} className="address-form-fields" style={{ marginTop: '0.75rem' }}>
+                  <label>Add reply<textarea required rows={2} value={reply} onChange={(e) => setReply(e.target.value)} /></label>
+                  <button className="secondary-button" type="submit" disabled={busy}>Send reply</button>
+                </form>
+              )}
+            </div>
+          )}
+        </section>
+        <form className="panel address-form-panel" onSubmit={(event) => void createTicket(event)}>
+          <div className="panel-heading"><div><h2>Open a new support ticket</h2><p>Our operations and customer support team will respond here.</p></div></div>
+          <div className="address-form-fields">
+            <label>Category<select value={category} onChange={(e) => setCategory(e.target.value)}><option value="ORDER_INQUIRY">Order inquiry</option><option value="STORE_PICKUP">Store pickup</option><option value="PAYMENT_VERIFICATION">Payment verification</option><option value="RETURN_OR_REFUND">Return or refund</option><option value="OTHER">Other</option></select></label>
+            <label>Priority<select value={priority} onChange={(e) => setPriority(e.target.value)}><option value="LOW">Low</option><option value="NORMAL">Normal</option><option value="HIGH">High</option><option value="URGENT">Urgent</option></select></label>
+            <label>Subject<input required maxLength={200} value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Brief summary of your issue" /></label>
+            <label>Message<textarea required rows={4} maxLength={2000} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Include your order number or details…" /></label>
+            <button className="primary-button" type="submit" disabled={busy}>{busy ? 'Submitting…' : 'Open ticket'}</button>
+          </div>
+        </form>
+      </div>
+    </section>
+  )
 }

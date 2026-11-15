@@ -8,15 +8,17 @@ import com.ims.api.catalog.TrackingType;
 import com.ims.api.common.ApiException;
 import com.ims.api.warehouse.Warehouse;
 import com.ims.api.warehouse.WarehouseRepository;
-import org.springframework.http.HttpStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.List;
+import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 import java.util.Objects;
+import java.util.UUID;
 
 @Service
 public class InventoryService {
@@ -93,6 +95,9 @@ public class InventoryService {
         Warehouse warehouse = warehouses.findById(request.warehouseId())
                 .orElseThrow(() -> ApiException.notFound("Warehouse not found"));
 
+        AppUser actor = users.findByEmailIgnoreCase(actorEmail).orElse(null);
+        enforceWarehouseScope(actor, warehouse.getId());
+
         balances.ensureExists(product.getId(), warehouse.getId());
         InventoryBalance balance = balances.findForUpdate(product.getId(), warehouse.getId())
                 .orElseThrow(() -> new IllegalStateException("Inventory balance could not be locked"));
@@ -103,13 +108,112 @@ public class InventoryService {
             throw new ApiException(HttpStatus.CONFLICT, "Adjustment would reduce sellable stock below reserved and damaged quantities");
         }
 
-        AppUser actor = users.findByEmailIgnoreCase(actorEmail).orElse(null);
         balance.setOnHandQuantity(after);
         balances.save(balance);
 
         InventoryMovement movement = new InventoryMovement(
                 product, warehouse, actor, delta, before, after, idempotencyKey, request.reason().trim());
         return InventoryDtos.MovementResponse.from(movements.save(movement));
+    }
+
+    @Transactional
+    public InventoryDtos.TransferResponse transfer(
+            InventoryDtos.TransferRequest request,
+            String actorEmail
+    ) {
+        if (Objects.equals(request.sourceWarehouseId(), request.destinationWarehouseId())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Source and destination warehouses must be different");
+        }
+        BigDecimal quantity = request.quantity();
+        if (quantity.signum() <= 0 || quantity.stripTrailingZeros().scale() > 3) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Transfer quantity must be positive with at most three decimal places");
+        }
+
+        String outKey = request.idempotencyKey().toString();
+        String inKey = UUID.nameUUIDFromBytes(("ims:transfer:in:" + outKey).getBytes(StandardCharsets.UTF_8)).toString();
+        String trimmedReason = request.reason().trim();
+
+        if (idempotencyKeys.reserveIfAbsent(outKey) == 0) {
+            InventoryMovement existingOut = movements.findByIdempotencyKey(outKey)
+                    .orElseThrow(() -> new IllegalStateException("Transfer outbound idempotency reservation has no movement"));
+            InventoryMovement existingIn = movements.findByIdempotencyKey(inKey)
+                    .orElseThrow(() -> new IllegalStateException("Transfer inbound idempotency reservation has no movement"));
+            boolean sameRequest = "TRANSFER_OUT".equals(existingOut.getMovementType())
+                    && "TRANSFER_IN".equals(existingIn.getMovementType())
+                    && existingOut.getProduct().getId().equals(request.productId())
+                    && existingOut.getWarehouse().getId().equals(request.sourceWarehouseId())
+                    && existingIn.getWarehouse().getId().equals(request.destinationWarehouseId())
+                    && existingOut.getQuantityDelta().compareTo(quantity.negate()) == 0
+                    && existingIn.getQuantityDelta().compareTo(quantity) == 0
+                    && existingOut.getReason().equals(trimmedReason);
+            if (!sameRequest) {
+                throw ApiException.conflict("Idempotency key was already used for a different warehouse transfer");
+            }
+            return new InventoryDtos.TransferResponse(
+                    existingOut.getReferenceId(),
+                    InventoryDtos.MovementResponse.from(existingOut),
+                    InventoryDtos.MovementResponse.from(existingIn)
+            );
+        }
+        idempotencyKeys.reserveIfAbsent(inKey);
+
+        Product product = products.findById(request.productId())
+                .orElseThrow(() -> ApiException.notFound("Product not found"));
+        if (product.getTrackingType() == TrackingType.NONE) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Non-tracked products cannot be transferred between warehouses");
+        }
+
+        Warehouse sourceWarehouse = warehouses.findById(request.sourceWarehouseId())
+                .orElseThrow(() -> ApiException.notFound("Source warehouse not found"));
+        Warehouse destinationWarehouse = warehouses.findById(request.destinationWarehouseId())
+                .orElseThrow(() -> ApiException.notFound("Destination warehouse not found"));
+        if (!sourceWarehouse.isActive() || !destinationWarehouse.isActive()) {
+            throw ApiException.conflict("Both source and destination warehouses must be active");
+        }
+
+        AppUser actor = users.findByEmailIgnoreCase(actorEmail).orElse(null);
+        enforceWarehouseScope(actor, sourceWarehouse.getId());
+
+        long firstWarehouseId = Math.min(sourceWarehouse.getId(), destinationWarehouse.getId());
+        long secondWarehouseId = Math.max(sourceWarehouse.getId(), destinationWarehouse.getId());
+        balances.ensureExists(product.getId(), firstWarehouseId);
+        balances.ensureExists(product.getId(), secondWarehouseId);
+
+        InventoryBalance firstLocked = balances.findForUpdate(product.getId(), firstWarehouseId)
+                .orElseThrow(() -> new IllegalStateException("First warehouse balance could not be locked"));
+        InventoryBalance secondLocked = balances.findForUpdate(product.getId(), secondWarehouseId)
+                .orElseThrow(() -> new IllegalStateException("Second warehouse balance could not be locked"));
+
+        InventoryBalance sourceBalance = firstLocked.getWarehouse().getId().equals(sourceWarehouse.getId()) ? firstLocked : secondLocked;
+        InventoryBalance destinationBalance = firstLocked.getWarehouse().getId().equals(destinationWarehouse.getId()) ? firstLocked : secondLocked;
+
+        if (sourceBalance.getAvailableQuantity().compareTo(quantity) < 0) {
+            throw ApiException.conflict("There is not enough available stock in the source warehouse for this transfer");
+        }
+
+        BigDecimal sourceBefore = sourceBalance.getOnHandQuantity();
+        BigDecimal sourceAfter = sourceBefore.subtract(quantity);
+        BigDecimal destBefore = destinationBalance.getOnHandQuantity();
+        BigDecimal destAfter = destBefore.add(quantity);
+
+        sourceBalance.setOnHandQuantity(sourceAfter);
+        destinationBalance.setOnHandQuantity(destAfter);
+        balances.save(sourceBalance);
+        balances.save(destinationBalance);
+
+        String transferReference = "TRF-" + outKey.replace("-", "").substring(0, 12).toUpperCase(Locale.ROOT);
+        InventoryMovement outMovement = movements.save(new InventoryMovement(
+                product, sourceWarehouse, actor, "TRANSFER_OUT", quantity.negate(),
+                sourceBefore, sourceAfter, outKey, trimmedReason, "WAREHOUSE_TRANSFER", transferReference));
+        InventoryMovement inMovement = movements.save(new InventoryMovement(
+                product, destinationWarehouse, actor, "TRANSFER_IN", quantity,
+                destBefore, destAfter, inKey, trimmedReason, "WAREHOUSE_TRANSFER", transferReference));
+
+        return new InventoryDtos.TransferResponse(
+                transferReference,
+                InventoryDtos.MovementResponse.from(outMovement),
+                InventoryDtos.MovementResponse.from(inMovement)
+        );
     }
 
     @Transactional
@@ -154,6 +258,7 @@ public class InventoryService {
         BigDecimal after = before.add(quantity);
         AppUser actor = users.findByEmailIgnoreCase(actorEmail)
                 .orElseThrow(ApiException::unauthorized);
+        enforceWarehouseScope(actor, warehouseId);
 
         balance.setOnHandQuantity(after);
         balances.save(balance);
@@ -209,6 +314,7 @@ public class InventoryService {
         }
 
         AppUser actor = users.findByEmailIgnoreCase(actorEmail).orElseThrow(ApiException::unauthorized);
+        enforceWarehouseScope(actor, warehouseId);
         BigDecimal before = balance.getOnHandQuantity();
         BigDecimal after = before.subtract(quantity);
         balance.setOnHandQuantity(after);
@@ -310,6 +416,7 @@ public class InventoryService {
 
         AppUser actor = users.findByEmailIgnoreCase(actorEmail)
                 .orElseThrow(ApiException::unauthorized);
+        enforceWarehouseScope(actor, warehouseId);
         BigDecimal onHandBefore = balance.getOnHandQuantity();
         BigDecimal onHandAfter = onHandBefore.subtract(quantity);
         BigDecimal reservedAfter = balance.getReservedQuantity().subtract(quantity);
@@ -344,6 +451,7 @@ public class InventoryService {
 
         AppUser actor = users.findByEmailIgnoreCase(actorEmail)
                 .orElseThrow(ApiException::unauthorized);
+        enforceWarehouseScope(actor, warehouseId);
         BigDecimal before = balance.getOnHandQuantity();
         BigDecimal after = before.subtract(quantity);
         balance.setOnHandQuantity(after);
@@ -377,6 +485,7 @@ public class InventoryService {
         InventoryBalance balance = balances.findForUpdate(productId, warehouseId)
                 .orElseThrow(() -> ApiException.conflict("The original inventory balance could not be found"));
         AppUser actor = users.findByEmailIgnoreCase(actorEmail).orElseThrow(ApiException::unauthorized);
+        enforceWarehouseScope(actor, warehouseId);
         BigDecimal before = balance.getOnHandQuantity();
         BigDecimal damagedBefore = balance.getDamagedQuantity();
         BigDecimal quantityAdded = restockQuantity.add(damagedQuantity);
@@ -396,6 +505,12 @@ public class InventoryService {
                     damagedQuantity, before.add(restockQuantity), after, damagedIdempotencyKey,
                     "Inspected return quarantined as damaged " + returnNumber, "RETURN", returnNumber,
                     BigDecimal.ZERO, damagedQuantity));
+        }
+    }
+
+    private void enforceWarehouseScope(AppUser actor, long warehouseId) {
+        if (actor != null && !actor.canAccessWarehouse(warehouseId)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Your account is not scoped to operate on this warehouse");
         }
     }
 }

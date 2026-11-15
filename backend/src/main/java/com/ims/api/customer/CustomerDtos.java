@@ -1,6 +1,5 @@
 package com.ims.api.customer;
 
-import com.ims.api.common.PageResponse;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
@@ -81,11 +80,25 @@ public final class CustomerDtos {
 
     public record CheckoutRequest(
             @NotNull UUID idempotencyKey,
-            @NotNull Long addressId,
+            Long addressId,
             @NotNull Long warehouseId,
             @NotNull PaymentMethod paymentMethod,
-            @Size(max = 1000) String notes
+            @Size(max = 1000) String notes,
+            FulfillmentType fulfillmentType
     ) {
+        public CheckoutRequest(
+                UUID idempotencyKey,
+                Long addressId,
+                Long warehouseId,
+                PaymentMethod paymentMethod,
+                String notes
+        ) {
+            this(idempotencyKey, addressId, warehouseId, paymentMethod, notes, FulfillmentType.DELIVERY);
+        }
+
+        public FulfillmentType resolvedFulfillmentType() {
+            return fulfillmentType == null ? FulfillmentType.DELIVERY : fulfillmentType;
+        }
     }
 
     public record OrderItemResponse(
@@ -101,6 +114,7 @@ public final class CustomerDtos {
 
     public record OrderResponse(
             Long id, String orderNumber, String customerEmail, Long warehouseId, String warehouseName,
+            FulfillmentType fulfillmentType,
             CustomerOrderStatus status, PaymentMethod paymentMethod, PaymentStatus paymentStatus,
             String currencyCode, BigDecimal subtotal, BigDecimal taxAmount,
             BigDecimal shippingAmount, BigDecimal discountAmount, BigDecimal total,
@@ -109,10 +123,12 @@ public final class CustomerDtos {
             String postalCode, String countryCode, String notes, Instant cancelledAt,
             Instant createdAt, List<OrderItemResponse> items
     ) {
-        static OrderResponse from(CustomerOrder order) {
+        public static OrderResponse from(CustomerOrder order) {
             return new OrderResponse(order.getId(), order.getOrderNumber(), order.getCustomer().getEmail(),
                     order.getWarehouse().getId(),
-                    order.getWarehouse().getName(), order.getStatus(), order.getPaymentMethod(),
+                    order.getWarehouse().getName(),
+                    order.getFulfillmentType(),
+                    order.getStatus(), order.getPaymentMethod(),
                     order.getPaymentStatus(), order.getCurrencyCode(), order.getSubtotal(),
                     order.getTaxAmount(), order.getShippingAmount(), order.getDiscountAmount(),
                     order.getTotal(), order.getAddressLabel(), order.getRecipientName(),

@@ -21,4 +21,12 @@ public interface InventoryMovementRepository extends JpaRepository<InventoryMove
             """,
             countQuery = "select count(movement) from InventoryMovement movement where movement.warehouse.id = :warehouseId")
     Page<InventoryMovement> findRecentForWarehouse(@Param("warehouseId") long warehouseId, Pageable pageable);
+
+    @Query("""
+            select movement from InventoryMovement movement
+            join fetch movement.product
+            join fetch movement.warehouse
+            order by movement.occurredAt asc, movement.id asc
+            """)
+    List<InventoryMovement> findAllOrdered();
 }

@@ -43,6 +43,10 @@ public class CustomerOrder {
     private Warehouse warehouse;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "fulfillment_type", nullable = false, length = 32)
+    private FulfillmentType fulfillmentType = FulfillmentType.DELIVERY;
+
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
     private CustomerOrderStatus status;
 
@@ -128,9 +132,19 @@ public class CustomerOrder {
                          PaymentMethod paymentMethod, PaymentStatus paymentStatus, String currencyCode,
                          BigDecimal subtotal, BigDecimal taxAmount, BigDecimal shippingAmount,
                          BigDecimal discountAmount, BigDecimal total, CustomerAddress address, String notes) {
+        this(orderNumber, customer, warehouse, FulfillmentType.DELIVERY, paymentMethod, paymentStatus,
+                currencyCode, subtotal, taxAmount, shippingAmount, discountAmount, total, address, notes);
+    }
+
+    public CustomerOrder(String orderNumber, AppUser customer, Warehouse warehouse,
+                         FulfillmentType fulfillmentType,
+                         PaymentMethod paymentMethod, PaymentStatus paymentStatus, String currencyCode,
+                         BigDecimal subtotal, BigDecimal taxAmount, BigDecimal shippingAmount,
+                         BigDecimal discountAmount, BigDecimal total, CustomerAddress address, String notes) {
         this.orderNumber = orderNumber;
         this.customer = customer;
         this.warehouse = warehouse;
+        this.fulfillmentType = fulfillmentType == null ? FulfillmentType.DELIVERY : fulfillmentType;
         this.status = CustomerOrderStatus.PENDING;
         this.paymentMethod = paymentMethod;
         this.paymentStatus = paymentStatus;
@@ -140,15 +154,27 @@ public class CustomerOrder {
         this.shippingAmount = shippingAmount;
         this.discountAmount = discountAmount;
         this.total = total;
-        this.addressLabel = address.getLabel();
-        this.recipientName = address.getRecipientName();
-        this.recipientPhone = address.getPhone();
-        this.addressLine1 = address.getAddressLine1();
-        this.addressLine2 = address.getAddressLine2();
-        this.city = address.getCity();
-        this.region = address.getRegion();
-        this.postalCode = address.getPostalCode();
-        this.countryCode = address.getCountryCode();
+        if (address != null) {
+            this.addressLabel = address.getLabel();
+            this.recipientName = address.getRecipientName();
+            this.recipientPhone = address.getPhone();
+            this.addressLine1 = address.getAddressLine1();
+            this.addressLine2 = address.getAddressLine2();
+            this.city = address.getCity();
+            this.region = address.getRegion();
+            this.postalCode = address.getPostalCode();
+            this.countryCode = address.getCountryCode();
+        } else {
+            this.addressLabel = "Store Pickup";
+            this.recipientName = customer.getFullName();
+            this.recipientPhone = "Pickup at Counter";
+            this.addressLine1 = warehouse.getName() + " (" + warehouse.getCode() + ")";
+            this.addressLine2 = null;
+            this.city = "Store Pickup";
+            this.region = null;
+            this.postalCode = null;
+            this.countryCode = "PH";
+        }
         this.notes = notes;
     }
 
@@ -170,10 +196,16 @@ public class CustomerOrder {
     }
 
     public CustomerOrderStatus transitionTo(CustomerOrderStatus nextStatus) {
+        if (status == CustomerOrderStatus.PROCESSING
+                && fulfillmentType == FulfillmentType.STORE_PICKUP
+                && nextStatus == CustomerOrderStatus.SHIPPED) {
+            throw new IllegalStateException("Store pickup orders must transition to READY_FOR_PICKUP instead of SHIPPED");
+        }
         boolean allowed = switch (status) {
             case PENDING -> nextStatus == CustomerOrderStatus.CONFIRMED;
             case CONFIRMED -> nextStatus == CustomerOrderStatus.PROCESSING;
-            case PROCESSING -> nextStatus == CustomerOrderStatus.SHIPPED;
+            case PROCESSING -> nextStatus == CustomerOrderStatus.SHIPPED
+                    || nextStatus == CustomerOrderStatus.READY_FOR_PICKUP;
             case READY_FOR_PICKUP, SHIPPED -> nextStatus == CustomerOrderStatus.DELIVERED;
             case DELIVERED, CANCELLED, RETURN_REQUESTED, RETURNED, REFUNDED -> false;
         };
@@ -231,6 +263,7 @@ public class CustomerOrder {
     public String getOrderNumber() { return orderNumber; }
     public AppUser getCustomer() { return customer; }
     public Warehouse getWarehouse() { return warehouse; }
+    public FulfillmentType getFulfillmentType() { return fulfillmentType == null ? FulfillmentType.DELIVERY : fulfillmentType; }
     public CustomerOrderStatus getStatus() { return status; }
     public PaymentMethod getPaymentMethod() { return paymentMethod; }
     public PaymentStatus getPaymentStatus() { return paymentStatus; }

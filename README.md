@@ -1,48 +1,42 @@
 # Inventory Management System
 
-A staged full-stack inventory and retail management platform. The implementation is being built around a React + TypeScript customer/admin frontend, a Java 21 Spring Boot REST API, MySQL 8, and Flyway migrations.
+A full-stack inventory, procurement, POS, and customer commerce platform built with a React + TypeScript customer/staff frontend, a Java 21 Spring Boot 3 REST API, MySQL 8, and Flyway migrations (`V1` through `V8`).
 
 ## Current status
 
-Implemented vertical slices include product/category/warehouse administration, stock adjustments and ledger history, supplier purchasing and receiving, audited purchase cancellation, supplier returns with stock dispatch and manual credit-note records, a customer storefront with registration/login, saved addresses, persistent cart, server-priced checkout, stock reservations, order history/status tracking, staff fulfillment and auditable manual payment verification, plus a cashier POS with independent receipts, cash change, external-terminal references, locked stock deduction and receipt printing. Customer returns/refunds are also implemented. Remaining work includes MySQL migration verification, finer-grained security/object scopes, reporting, notifications, support, and payment-provider/accounts-payable integrations. See [the implementation plan](docs/implementation-plan.md) and Obsidian notes for the verified scope.
+All core and cross-cutting workflows mapped in the Figma architecture (`Website Flow`, `Gaps & Remaining Flows`, and `System Architecture`) are implemented:
 
-## Planned architecture
+- **Catalog & Warehouses**: Product/category/warehouse administration, public catalog browsing, and multi-warehouse availability.
+- **Inventory & Stock Ledger**: Locked balance rows, idempotent stock adjustments, **between-warehouse stock transfers** (`POST /api/v1/admin/inventory/transfers` with paired `TRANSFER_OUT` / `TRANSFER_IN` movements and deadlock-safe ascending lock ordering), and full movement history.
+- **Procurement, Supplier Returns & Accounts Payable**: Supplier management, purchase order drafts/approvals/partial goods receipts, audited PO cancellation, supplier return approvals and stock dispatch, manual supplier credit notes, and **supplier payables & credit reconciliation** (`/api/v1/admin/supplier-payables`) with idempotent supplier settlement payments.
+- **Customer Commerce & Store Pickup**: Customer registration/login, saved addresses, persistent cart, server-priced checkout supporting both **Home Delivery (`DELIVERY`)** and **Store Pickup (`STORE_PICKUP`)**, stock reservation, order history/status tracking, **`READY_FOR_PICKUP` fulfillment transition**, and auditable manual payment verification.
+- **Sales, POS & Returns**: Cashier POS with server-side pricing, cash tender/change, external terminal reference recording, receipt printing, and customer/POS return requests, physical inspection dispositions (`restock`, `damaged`, `scrap`), and idempotent refund records.
+- **Identity, Warehouse Scopes, Lockout & Security Audit**: Role-based access control (`OWNER`, `ADMIN`, `INVENTORY_MANAGER`, `PURCHASING_OFFICER`, `WAREHOUSE_STAFF`, `ACCOUNTANT`, `CASHIER`, `CUSTOMER_SUPPORT`, `CUSTOMER`), **staff user & warehouse scope administration** (`/api/v1/admin/users`), **brute-force login lockout** (5 failed attempts -> 15-minute lock with `423 Locked`), **password change & token-based password reset** (`/api/v1/auth/change-password`, `/api/v1/auth/password-reset/**`), and **persistent security audit events** (`/api/v1/admin/audit-events`).
+- **Operations, Reports, CSV Exports, Support & Notifications**: Operational overview and **ledger-vs-balance reconciliation** (`/api/v1/admin/reports/overview`), formula-safe CSV exports (`/api/v1/admin/reports/export/{inventory|sales|suppliers|audit}`), customer & staff **support tickets** (`/api/v1/customer/support-tickets`, `/api/v1/admin/support-tickets`), and in-app **user notifications** (`/api/v1/notifications`).
 
-- `frontend/`: React, TypeScript, Vite, React Router, a centralized API client, and reusable UI.
-- `backend/`: Java 21, Spring Boot 3, Spring Security, JPA, Bean Validation, and REST DTOs.
-- `database/`: safe database creation script and MySQL setup notes. Versioned schema changes live in `backend/src/main/resources/db/migration/` and are applied by Flyway.
-- `docs/`: architecture, security, API, implementation, and Obsidian-compatible notes.
+## Architecture
 
-## Local prerequisites
-
-- Node.js 20.19+ (inspected machine: Node 24.13.0) and npm 11.12.1.
-- Java 21 (inspected machine: Temurin 21.0.11).
-- MySQL 8 (AMPPS has MySQL 8.0.45 installed on this machine).
-- Maven Wrapper is included so a global Maven installation is not required.
-
-AMPPS phpMyAdmin is configured for cookie authentication. The MySQL listener responds on `127.0.0.1:3306`, but a read-only version query using an unauthenticated local `root` account was rejected. No database, account, or existing data has been changed. Configure a dedicated least-privilege application account and database before migrations.
+- [frontend/](file:///c:/Users/shizu/OneDrive/Desktop/IMS/frontend): React, TypeScript, Vite, React Router, centralized Axios API client, and responsive customer/admin workspaces.
+- [backend/](file:///c:/Users/shizu/OneDrive/Desktop/IMS/backend): Java 21, Spring Boot 3, Spring Security, JPA/Hibernate (`ddl-auto: validate`), Bean Validation, Flyway migrations (`V1`–`V8`), and OpenAPI (`/docs`).
+- [database/](file:///c:/Users/shizu/OneDrive/Desktop/IMS/database): Safe database creation script ([create-database.sql](file:///c:/Users/shizu/OneDrive/Desktop/IMS/database/create-database.sql)) and least-privilege user separation script ([setup-users.sql](file:///c:/Users/shizu/OneDrive/Desktop/IMS/database/setup-users.sql)).
+- [scripts/](file:///c:/Users/shizu/OneDrive/Desktop/IMS/scripts): Environment loader ([load-env.ps1](file:///c:/Users/shizu/OneDrive/Desktop/IMS/scripts/load-env.ps1)) and SHA-256 verified MySQL backup/restore scripts ([backup-db.ps1](file:///c:/Users/shizu/OneDrive/Desktop/IMS/scripts/backup-db.ps1), [restore-db.ps1](file:///c:/Users/shizu/OneDrive/Desktop/IMS/scripts/restore-db.ps1)).
+- [docs/](file:///c:/Users/shizu/OneDrive/Desktop/IMS/docs): Architecture, security, API, implementation plan, and Obsidian notes.
 
 ## Setup
 
-1. Copy `.env.example` to `.env`, set local database credentials, and generate a random JWT secret. In PowerShell, `[Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))` generates the required 32 random bytes.
-2. In phpMyAdmin, run `database/create-database.sql` and create a dedicated `ims_app` user scoped only to `inventory_management_system`. Follow [the database setup notes](database/README.md). Spring connects directly to MySQL; phpMyAdmin is only an administration UI.
+1. Copy `.env.example` to `.env`, set local database credentials, and generate a random 32-byte Base64 JWT secret:
+   ```powershell
+   [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
+   ```
+2. Provision the MySQL database and least-privilege users using [database/create-database.sql](file:///c:/Users/shizu/OneDrive/Desktop/IMS/database/create-database.sql) and [database/setup-users.sql](file:///c:/Users/shizu/OneDrive/Desktop/IMS/database/setup-users.sql) (see [database/README.md](file:///c:/Users/shizu/OneDrive/Desktop/IMS/database/README.md)).
 3. In a backend PowerShell terminal at the project root, run `. .\scripts\load-env.ps1`, then `Set-Location backend` and `./mvnw.cmd spring-boot:run`.
-4. In a second PowerShell terminal, load the same environment file, enter `frontend/`, then run `npm install` and `npm run dev`.
+4. In a second PowerShell terminal, enter `frontend/`, then run `npm install` and `npm run dev`.
 
-Keep `.env` out of Git and do not use production credentials for local development.
+Keep `.env` out of Git and never commit production credentials.
 
-## API and database
+## Security Hardening (API & Database)
 
-The API uses `/api/v1`. Flyway owns schema changes; Hibernate schema auto-update is disabled. Inventory changes are represented as ledger movements alongside current balance rows, including separate reserved-stock deltas. Customer checkout refreshes prices on the server, checks available inventory in a transaction, reserves stock, snapshots the delivery address, and records an idempotency key. Staff fulfillment consumes reserved stock once at delivery. POS uses server-side prices and a transactionally locked stock deduction; cash tender/change and cashier-entered external terminal references are recorded without handling card details. Supplier returns only deduct stock at dispatch and record manually issued supplier credits for reconciliation; no accounting or payment provider is integrated. `IMS_CHECKOUT_TAX_RATE`, `IMS_CHECKOUT_SHIPPING_AMOUNT`, and `IMS_CHECKOUT_CURRENCY_CODE` configure checkout/POS tax and currency; tax and shipping default to zero until configured. See the API and database notes for route and migration details.
-
-## Security
-
-The backend is authoritative for authentication, permissions, product prices, and stock availability. Monetary values use fixed-precision decimals. Inventory updates are transactional, prevent negative balances, and record a movement with a database-reserved idempotency key. Refresh/logout requests require an allowed `Origin`; the refresh cookie is `HttpOnly` and `SameSite=Strict`. See the security notes under `docs/obsidian/Inventory Management System/04 - Security/`.
-
-## Verification
-
-Verified: `npm run build` passes; Vitest passes all 18 frontend UI tests; `backend/mvnw.cmd test` passes all 35 backend tests (16 application/security smoke, 2 origin-guard, 6 customer commerce, 4 inventory, 2 POS, 3 purchasing, and 2 supplier-return workflow tests). Production MySQL migration and integration checks still require a provisioned database account.
-
-## Obsidian
-
-Obsidian-formatted source notes are maintained in `docs/obsidian/Inventory Management System/`. The local Obsidian vault at `IMS/` contains the project notes under `IMS/Inventory Management System/`; its `.obsidian/` settings and generated Welcome note stay local and are excluded from Git. See [the Obsidian quick start](docs/obsidian/Inventory%20Management%20System/00%20-%20Project%20Overview/Obsidian%20Quick%20Start.md).
+- **Server-Side Authority**: Prices, taxes, discounts, stock availability, role permissions, and warehouse object scopes are enforced on the server.
+- **Database Least Privilege**: [database/setup-users.sql](file:///c:/Users/shizu/OneDrive/Desktop/IMS/database/setup-users.sql) separates `ims_migrator` (DDL privileges for Flyway) from `ims_app` (`SELECT, INSERT, UPDATE, DELETE` only at runtime).
+- **Concurrency & Idempotency**: Pessimistic row locks (`SELECT ... FOR UPDATE`), `@Version` optimistic locking, deterministic lock ordering on multi-warehouse transfers, and SHA-256 request-hash idempotency keys protect all stock-mutating and financial endpoints.
+- **Session & Header Hardening**: Short-lived JWT access tokens, rotating `HttpOnly` + `SameSite=Strict` refresh cookies guarded by strict `Origin` checks, account lockout after 5 failed login attempts, and HTTP security headers (`Content-Security-Policy`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`).

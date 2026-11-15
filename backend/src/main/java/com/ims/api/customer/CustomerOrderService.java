@@ -68,6 +68,11 @@ public class CustomerOrderService {
     @Transactional
     public CustomerDtos.OrderResponse checkout(String email, CustomerDtos.CheckoutRequest request) {
         AppUser customer = lockUser(email);
+        FulfillmentType fulfillmentType = request.resolvedFulfillmentType();
+        if (fulfillmentType == FulfillmentType.DELIVERY && request.addressId() == null) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Delivery address is required for home delivery orders");
+        }
+
         String idempotencyKey = request.idempotencyKey().toString();
         String requestHash = requestHash(request);
 
@@ -86,8 +91,11 @@ public class CustomerOrderService {
         Warehouse warehouse = warehouses.findById(request.warehouseId())
                 .filter(Warehouse::isActive)
                 .orElseThrow(() -> ApiException.notFound("Active fulfillment location not found"));
-        CustomerAddress address = addresses.findByIdAndUser_Id(request.addressId(), customer.getId())
-                .orElseThrow(() -> ApiException.notFound("Delivery address not found"));
+        CustomerAddress address = null;
+        if (request.addressId() != null) {
+            address = addresses.findByIdAndUser_Id(request.addressId(), customer.getId())
+                    .orElseThrow(() -> ApiException.notFound("Delivery address not found"));
+        }
         var cart = cartItems.findAllForUpdateByUser(customer.getId());
         if (cart.isEmpty()) throw ApiException.conflict("Your cart is empty");
         if (cart.size() > MAX_ORDER_LINES) throw ApiException.conflict("An order can contain at most 200 products");
@@ -112,7 +120,9 @@ public class CustomerOrderService {
         }
         subtotal = subtotal.setScale(4, RoundingMode.HALF_UP);
         BigDecimal taxAmount = subtotal.multiply(checkoutProperties.taxRate()).setScale(4, RoundingMode.HALF_UP);
-        BigDecimal shippingAmount = checkoutProperties.shippingAmount().setScale(4, RoundingMode.HALF_UP);
+        BigDecimal shippingAmount = fulfillmentType == FulfillmentType.STORE_PICKUP
+                ? ZERO_MONEY
+                : checkoutProperties.shippingAmount().setScale(4, RoundingMode.HALF_UP);
         BigDecimal discountAmount = ZERO_MONEY;
         BigDecimal total = subtotal.add(taxAmount).add(shippingAmount).subtract(discountAmount)
                 .setScale(4, RoundingMode.HALF_UP);
@@ -120,13 +130,13 @@ public class CustomerOrderService {
                 ? PaymentStatus.AWAITING_VERIFICATION
                 : PaymentStatus.UNPAID;
 
-        CustomerOrder order = new CustomerOrder(nextOrderNumber(), customer, warehouse,
+        CustomerOrder order = new CustomerOrder(nextOrderNumber(), customer, warehouse, fulfillmentType,
                 request.paymentMethod(), paymentStatus, checkoutProperties.currencyCode().toUpperCase(Locale.ROOT),
                 subtotal, taxAmount, shippingAmount, discountAmount, total, address, clean(request.notes()));
         orderLines.forEach(order::addItem);
         CustomerOrder saved = orders.saveAndFlush(order);
         statusHistory.save(new CustomerOrderStatusHistory(saved, null, CustomerOrderStatus.PENDING,
-                customer, "Order placed"));
+                customer, fulfillmentType == FulfillmentType.STORE_PICKUP ? "Store pickup order placed" : "Order placed"));
 
         for (CustomerOrderItem item : saved.getItems()) {
             inventory.reserveCustomerOrderStock(
@@ -222,8 +232,11 @@ public class CustomerOrderService {
     }
 
     private String requestHash(CustomerDtos.CheckoutRequest request) {
-        String canonical = request.addressId() + "|" + request.warehouseId() + "|"
-                + request.paymentMethod().name() + "|" + (clean(request.notes()) == null ? "" : clean(request.notes()));
+        String canonical = (request.addressId() == null ? "PICKUP" : request.addressId()) + "|"
+                + request.warehouseId() + "|"
+                + request.resolvedFulfillmentType().name() + "|"
+                + request.paymentMethod().name() + "|"
+                + (clean(request.notes()) == null ? "" : clean(request.notes()));
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256").digest(canonical.getBytes(StandardCharsets.UTF_8));
             return HexFormat.of().formatHex(digest);

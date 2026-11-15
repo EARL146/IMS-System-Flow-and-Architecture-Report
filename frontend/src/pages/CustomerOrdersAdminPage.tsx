@@ -5,13 +5,14 @@ import { useAuth } from '../auth/AuthContext'
 import './customer-orders-admin.css'
 
 type OrderStatus = 'PENDING' | 'CONFIRMED' | 'PROCESSING' | 'READY_FOR_PICKUP' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED'
+type FulfillmentType = 'DELIVERY' | 'STORE_PICKUP'
 type PaymentMethod = 'CASH_ON_DELIVERY' | 'MANUAL_TRANSFER'
 type PaymentStatus = 'UNPAID' | 'AWAITING_VERIFICATION' | 'PAID' | 'FAILED' | 'REFUNDED' | 'CANCELLED'
 
 interface Page<T> { content: T[]; totalElements: number; totalPages: number }
 interface OrderItem { id: number; sku: string; productName: string; unitOfMeasure: string; quantity: number; unitPrice: number; lineTotal: number }
 interface CustomerOrder {
-  id: number; orderNumber: string; customerEmail: string; warehouseName: string; status: OrderStatus
+  id: number; orderNumber: string; customerEmail: string; warehouseName: string; fulfillmentType?: FulfillmentType; status: OrderStatus
   paymentMethod: PaymentMethod; paymentStatus: PaymentStatus; currencyCode: string; total: number
   recipientName: string; recipientPhone: string; addressLine1: string; addressLine2: string | null
   city: string; region: string | null; postalCode: string | null; countryCode: string; notes: string | null
@@ -28,7 +29,7 @@ const filters: Array<{ label: string; value: OrderStatus | '' }> = [
 
 const nextStatuses: Partial<Record<OrderStatus, OrderStatus[]>> = {
   PENDING: ['CONFIRMED'], CONFIRMED: ['PROCESSING'],
-  PROCESSING: ['SHIPPED'], SHIPPED: ['DELIVERED'],
+  PROCESSING: ['SHIPPED', 'READY_FOR_PICKUP'], READY_FOR_PICKUP: ['DELIVERED'], SHIPPED: ['DELIVERED'],
 }
 
 function label(value: string) { return value.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase()) }
@@ -107,10 +108,16 @@ export function CustomerOrdersAdminPage() {
     return () => { active = false }
   }, [selectedId, historyRevision])
 
-  const transitions = useMemo(() => selected ? nextStatuses[selected.status] ?? [] : [], [selected])
+  const transitions = useMemo(() => {
+    if (!selected) return []
+    if (selected.status === 'PROCESSING' && selected.fulfillmentType === 'STORE_PICKUP') {
+      return ['READY_FOR_PICKUP'] as OrderStatus[]
+    }
+    return nextStatuses[selected.status] ?? []
+  }, [selected])
   const canRecordPayment = Boolean(selected && selected.paymentStatus !== 'PAID' && selected.status !== 'CANCELLED'
     && ((selected.paymentMethod === 'MANUAL_TRANSFER' && selected.paymentStatus === 'AWAITING_VERIFICATION')
-      || (selected.paymentMethod === 'CASH_ON_DELIVERY' && selected.status === 'DELIVERED')))
+      || (selected.paymentMethod === 'CASH_ON_DELIVERY' && (selected.status === 'DELIVERED' || selected.status === 'READY_FOR_PICKUP'))))
   const paymentAmountValue = paymentAmount || (selected ? String(selected.total) : '')
   const selectedHistory = historyOrderId === selectedId ? history : []
 

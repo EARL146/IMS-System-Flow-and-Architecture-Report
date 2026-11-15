@@ -16,6 +16,13 @@ type ReturnItem = {
   quantity: number; damagedQuantity: number; unitCost: number; lineTotal: number
 }
 type CreditNote = { id: number; supplierReference: string; amount: number; currencyCode: string; notes: string | null; recordedBy: string; recordedAt: string }
+type SupplierPayablePayment = { id: number; paymentReference: string; paymentMethod: string; amount: number; currencyCode: string; notes: string | null; recordedByEmail: string; paidAt: string }
+type SupplierPayable = {
+  id: number; payableNumber: string; purchaseOrderId: number; purchaseOrderNumber: string; supplierId: number; supplierName: string
+  invoiceReference: string | null; status: 'OPEN' | 'PARTIALLY_PAID' | 'SETTLED' | 'CANCELLED'; currencyCode: string
+  grossAmount: number; creditAppliedAmount: number; netPayableAmount: number; amountPaid: number; balanceDue: number
+  dueDate: string | null; notes: string | null; createdAt: string; payments: SupplierPayablePayment[]
+}
 type SupplierReturn = {
   id: number; returnNumber: string; purchaseOrderId: number; orderNumber: string; supplierName: string
   warehouseName: string; status: ReturnStatus; reason: string; notes: string | null; rejectionReason: string | null
@@ -55,6 +62,11 @@ export function SupplierReturnsPage() {
   const [creditReference, setCreditReference] = useState('')
   const [creditAmount, setCreditAmount] = useState('')
   const [creditNotes, setCreditNotes] = useState('')
+  const [payables, setPayables] = useState<SupplierPayable[]>([])
+  const [payablePoId, setPayablePoId] = useState('')
+  const [invoiceRef, setInvoiceRef] = useState('')
+  const [paymentAmount, setPaymentAmount] = useState<Record<number, string>>({})
+  const [paymentRef, setPaymentRef] = useState<Record<number, string>>({})
   const [busy, setBusy] = useState(false)
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
@@ -67,6 +79,12 @@ export function SupplierReturnsPage() {
       setRows(data.content)
       const nextId = selectedId && data.content.some(row => row.id === selectedId) ? selectedId : data.content[0]?.id
       setSelected(nextId ? (await api.get<SupplierReturn>('/admin/supplier-returns/' + nextId)).data : null)
+      try {
+        const payablesRes = await api.get<Page<SupplierPayable>>('/admin/supplier-payables', { params: { page: 0, size: 50 } })
+        setPayables(payablesRes.data.content ?? [])
+      } catch {
+        // ignore if role does not have payables access
+      }
     } catch (error) {
       setMessage(getErrorMessage(error, 'Supplier returns could not be loaded.'))
       setMessageError(true)
@@ -157,6 +175,55 @@ export function SupplierReturnsPage() {
     })
   }
 
+  async function generatePayable(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!payablePoId) return
+    setBusy(true); setMessage(''); setMessageError(false)
+    try {
+      await api.post('/admin/supplier-payables', {
+        purchaseOrderId: Number(payablePoId),
+        invoiceReference: invoiceRef.trim() || null,
+      })
+      setInvoiceRef('')
+      setPayablePoId('')
+      setMessage('Supplier payable created and reconciled with received PO value and credit notes.')
+      await load(selected?.id)
+    } catch (error) {
+      setMessage(getErrorMessage(error, 'Supplier payable could not be created.'))
+      setMessageError(true)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function recordSupplierPayment(payableId: number) {
+    const amount = Number(paymentAmount[payableId] || 0)
+    const ref = (paymentRef[payableId] || '').trim()
+    if (amount <= 0 || !ref) {
+      setMessage('Enter a payment reference and positive payment amount.')
+      setMessageError(true)
+      return
+    }
+    setBusy(true); setMessage(''); setMessageError(false)
+    try {
+      await api.post('/admin/supplier-payables/' + payableId + '/payments', {
+        idempotencyKey: crypto.randomUUID(),
+        paymentReference: ref,
+        paymentMethod: 'BANK_TRANSFER',
+        amount,
+      })
+      setPaymentAmount(curr => ({ ...curr, [payableId]: '' }))
+      setPaymentRef(curr => ({ ...curr, [payableId]: '' }))
+      setMessage('Supplier payment recorded and payable balance updated.')
+      await load(selected?.id)
+    } catch (error) {
+      setMessage(getErrorMessage(error, 'Supplier payment could not be recorded.'))
+      setMessageError(true)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const availableOrders = orders.filter(order => ['ORDERED', 'PARTIALLY_RECEIVED', 'RECEIVED', 'CANCELLED'].includes(order.status))
 
   return <main className="page-shell supplier-returns-page">
@@ -183,6 +250,63 @@ export function SupplierReturnsPage() {
         </div>
       </section> : <section className="supplier-return-detail supplier-return-empty"><RotateCcw size={22} /><h2>Select a supplier return</h2><p>Choose a return from the queue to review its inventory and credit history.</p></section>}
     </div>
+    {(canCreate || canCredit) && (
+      <section className="panel" style={{ marginTop: '1.5rem' }} aria-label="Supplier payables and credit reconciliation">
+        <div className="panel-heading">
+          <div>
+            <h2>Supplier payables & credit reconciliation</h2>
+            <p>Generate supplier payables from received purchase orders, automatically apply supplier return credit notes, and record supplier settlements.</p>
+          </div>
+        </div>
+        <form className="adjustment-form" onSubmit={event => void generatePayable(event)} style={{ marginBottom: '1rem' }}>
+          <label>Received purchase order ID<input required type="number" min="1" value={payablePoId} onChange={e => setPayablePoId(e.target.value)} placeholder="e.g. 1" /></label>
+          <label>Supplier invoice reference<input maxLength={120} value={invoiceRef} onChange={e => setInvoiceRef(e.target.value)} placeholder="INV-2026-001" /></label>
+          <button className="secondary-button" type="submit" disabled={busy || !payablePoId}>Generate / Reconcile Payable</button>
+        </form>
+        {payables.length > 0 && (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Payable #</th>
+                  <th>PO / Supplier</th>
+                  <th>Gross Received</th>
+                  <th>Credits Applied</th>
+                  <th>Paid</th>
+                  <th>Balance Due</th>
+                  <th>Status</th>
+                  {canCredit && <th>Settlement</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {payables.map(p => (
+                  <tr key={p.id}>
+                    <td><strong>{p.payableNumber}</strong>{p.invoiceReference && <small>{p.invoiceReference}</small>}</td>
+                    <td>{p.purchaseOrderNumber} · {p.supplierName}</td>
+                    <td>{money(p.grossAmount, p.currencyCode)}</td>
+                    <td>{money(p.creditAppliedAmount, p.currencyCode)}</td>
+                    <td>{money(p.amountPaid, p.currencyCode)}</td>
+                    <td><strong>{money(p.balanceDue, p.currencyCode)}</strong></td>
+                    <td><span className="status-pill status-neutral">{p.status}</span></td>
+                    {canCredit && (
+                      <td>
+                        {p.balanceDue > 0 ? (
+                          <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                            <input aria-label={'Payment ref for ' + p.payableNumber} placeholder="Ref #" value={paymentRef[p.id] ?? ''} onChange={e => setPaymentRef(c => ({ ...c, [p.id]: e.target.value }))} style={{ width: '90px' }} />
+                            <input aria-label={'Payment amount for ' + p.payableNumber} type="number" step="0.01" placeholder={String(p.balanceDue)} value={paymentAmount[p.id] ?? ''} onChange={e => setPaymentAmount(c => ({ ...c, [p.id]: e.target.value }))} style={{ width: '90px' }} />
+                            <button type="button" className="secondary-button" disabled={busy} onClick={() => void recordSupplierPayment(p.id)}>Pay</button>
+                          </div>
+                        ) : <small>Settled</small>}
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    )}
     {createOpen && <div className="modal-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setCreateOpen(false) }}><section className="product-modal purchase-modal" role="dialog" aria-modal="true" aria-labelledby="supplier-return-form-title">
       <div className="modal-heading"><div><div className="eyebrow">Purchasing operations</div><h2 id="supplier-return-form-title">New supplier return</h2></div><button type="button" className="icon-button" aria-label="Close" onClick={() => setCreateOpen(false)}><X size={18} /></button></div>
       <form onSubmit={event => void createReturn(event)} className="product-form">

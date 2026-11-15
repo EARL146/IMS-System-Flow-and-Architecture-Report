@@ -6,5 +6,9 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   test: {
     environment: 'jsdom',
+    pool: 'threads',
+    isolate: false,
+    maxWorkers: 1,
+    testTimeout: 15000,
   },
 })

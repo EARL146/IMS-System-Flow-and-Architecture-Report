@@ -1,5 +1,6 @@
 package com.ims.api.auth;
 
+import com.ims.api.audit.SecurityAuditService;
 import com.ims.api.common.ApiException;
 import com.ims.api.config.AuthProperties;
 import org.springframework.http.HttpStatus;
@@ -16,6 +17,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.HexFormat;
@@ -24,14 +26,18 @@ import java.util.Locale;
 @Service
 public class AuthService {
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    private static final Duration PASSWORD_RESET_TTL = Duration.ofMinutes(30);
 
     private final AuthenticationManager authenticationManager;
     private final AppUserRepository users;
     private final RoleRepository roles;
     private final RefreshSessionRepository refreshSessions;
+    private final PasswordResetTokenRepository passwordResetTokens;
     private final PasswordEncoder passwordEncoder;
     private final AccessTokenService accessTokens;
     private final AuthProperties authProperties;
+    private final LoginAttemptService loginAttemptService;
+    private final SecurityAuditService auditService;
     private final Clock clock;
 
     public AuthService(
@@ -39,18 +45,24 @@ public class AuthService {
             AppUserRepository users,
             RoleRepository roles,
             RefreshSessionRepository refreshSessions,
+            PasswordResetTokenRepository passwordResetTokens,
             PasswordEncoder passwordEncoder,
             AccessTokenService accessTokens,
             AuthProperties authProperties,
+            LoginAttemptService loginAttemptService,
+            SecurityAuditService auditService,
             Clock clock
     ) {
         this.authenticationManager = authenticationManager;
         this.users = users;
         this.roles = roles;
         this.refreshSessions = refreshSessions;
+        this.passwordResetTokens = passwordResetTokens;
         this.passwordEncoder = passwordEncoder;
         this.accessTokens = accessTokens;
         this.authProperties = authProperties;
+        this.loginAttemptService = loginAttemptService;
+        this.auditService = auditService;
         this.clock = clock;
     }
 
@@ -65,24 +77,43 @@ public class AuthService {
                 .orElseThrow(() -> new IllegalStateException("Customer role has not been seeded"));
         AppUser user = new AppUser(email, passwordEncoder.encode(request.password()), request.fullName().trim());
         user.addRole(customerRole);
-        return AuthDtos.UserResponse.from(users.save(user));
+        AppUser saved = users.save(user);
+        auditService.record("AUTH_REGISTER", email, "USER", String.valueOf(saved.getId()),
+                "Customer account registered: " + email);
+        return AuthDtos.UserResponse.from(saved);
     }
 
     @Transactional
     public AuthDtos.TokenBundle login(AuthDtos.LoginRequest request) {
         String email = normalizeEmail(request.email());
+        Instant now = clock.instant();
+        var existingUser = users.findByEmailIgnoreCase(email);
+        if (existingUser.isPresent() && existingUser.get().isLockedAt(now)) {
+            throw new ApiException(HttpStatus.TOO_MANY_REQUESTS,
+                    "This account is temporarily locked due to repeated failed sign-in attempts. Try again later.");
+        }
+
         try {
             authenticationManager.authenticate(
                     UsernamePasswordAuthenticationToken.unauthenticated(email, request.password()));
         } catch (AuthenticationException exception) {
+            loginAttemptService.recordFailedLogin(email);
             throw ApiException.unauthorized();
         }
 
-        AppUser user = users.findByEmailIgnoreCase(email)
+        AppUser user = users.findByEmailIgnoreCaseForUpdate(email)
                 .orElseThrow(ApiException::unauthorized);
         if (!user.isEnabled()) {
             throw ApiException.unauthorized();
         }
+        if (user.isLockedAt(now)) {
+            throw new ApiException(HttpStatus.TOO_MANY_REQUESTS,
+                    "This account is temporarily locked due to repeated failed sign-in attempts. Try again later.");
+        }
+        user.resetFailedLogins();
+        users.save(user);
+        auditService.record("AUTH_LOGIN_SUCCESS", user.getEmail(), "USER", String.valueOf(user.getId()),
+                "Authenticated session started for " + user.getEmail());
         return issueBundle(user);
     }
 
@@ -96,7 +127,8 @@ public class AuthService {
         RefreshSession oldSession = refreshSessions.findByTokenHashForUpdate(hashToken(rawRefreshToken))
                 .orElseThrow(ApiException::unauthorized);
 
-        if (oldSession.getRevokedAt() != null || !oldSession.getExpiresAt().isAfter(now) || !oldSession.getUser().isEnabled()) {
+        if (oldSession.getRevokedAt() != null || !oldSession.getExpiresAt().isAfter(now)
+                || !oldSession.getUser().isEnabled() || oldSession.getUser().isLockedAt(now)) {
             throw ApiException.unauthorized();
         }
 
@@ -116,7 +148,71 @@ public class AuthService {
         }
         refreshSessions.findByTokenHashForUpdate(hashToken(rawRefreshToken))
                 .filter(session -> session.getRevokedAt() == null)
-                .ifPresent(session -> session.revoke(clock.instant()));
+                .ifPresent(session -> {
+                    session.revoke(clock.instant());
+                    auditService.record("AUTH_LOGOUT", session.getUser().getEmail(), "USER",
+                            String.valueOf(session.getUser().getId()), "Session signed out");
+                });
+    }
+
+    @Transactional
+    public void changePassword(String email, AuthDtos.ChangePasswordRequest request) {
+        AppUser user = users.findByEmailIgnoreCaseForUpdate(normalizeEmail(email))
+                .orElseThrow(ApiException::unauthorized);
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Current password is incorrect");
+        }
+        if (request.currentPassword().equals(request.newPassword())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "New password must be different from the current password");
+        }
+        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        user.resetFailedLogins();
+        users.save(user);
+        refreshSessions.revokeAllActiveForUser(user.getId(), clock.instant());
+        auditService.record("AUTH_PASSWORD_CHANGED", user.getEmail(), "USER", String.valueOf(user.getId()),
+                "Account password changed and active refresh sessions revoked");
+    }
+
+    @Transactional
+    public AuthDtos.PasswordResetTokenResponse requestPasswordReset(AuthDtos.PasswordResetRequest request) {
+        String email = normalizeEmail(request.email());
+        var maybeUser = users.findByEmailIgnoreCaseForUpdate(email);
+        if (maybeUser.isEmpty() || !maybeUser.get().isEnabled()) {
+            return new AuthDtos.PasswordResetTokenResponse(
+                    "If an active account exists for this email, a password reset token has been generated.",
+                    null,
+                    PASSWORD_RESET_TTL.toSeconds());
+        }
+        AppUser user = maybeUser.get();
+        String rawToken = newRawRefreshToken();
+        Instant expiresAt = clock.instant().plus(PASSWORD_RESET_TTL);
+        passwordResetTokens.save(new PasswordResetToken(user, hashToken(rawToken), expiresAt));
+        auditService.record("AUTH_PASSWORD_RESET_REQUESTED", user.getEmail(), "USER", String.valueOf(user.getId()),
+                "Password reset token generated for " + user.getEmail());
+        return new AuthDtos.PasswordResetTokenResponse(
+                "Password reset token generated. Use it within 30 minutes to set a new password.",
+                rawToken,
+                PASSWORD_RESET_TTL.toSeconds());
+    }
+
+    @Transactional
+    public void confirmPasswordReset(AuthDtos.PasswordResetConfirmRequest request) {
+        Instant now = clock.instant();
+        PasswordResetToken resetToken = passwordResetTokens.findByTokenHashForUpdate(hashToken(request.resetToken().trim()))
+                .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Invalid or expired password reset token"));
+        if (!resetToken.isUsableAt(now)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Invalid or expired password reset token");
+        }
+        AppUser user = users.findByEmailIgnoreCaseForUpdate(resetToken.getUser().getEmail())
+                .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Invalid or expired password reset token"));
+        resetToken.markUsed(now);
+        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        user.resetFailedLogins();
+        passwordResetTokens.save(resetToken);
+        users.save(user);
+        refreshSessions.revokeAllActiveForUser(user.getId(), now);
+        auditService.record("AUTH_PASSWORD_RESET_COMPLETED", user.getEmail(), "USER", String.valueOf(user.getId()),
+                "Password reset completed and active refresh sessions revoked");
     }
 
     private AuthDtos.TokenBundle issueBundle(AppUser user) {

@@ -1,4 +1,4 @@
-import { Boxes, ChartNoAxesCombined, ClipboardList, LayoutDashboard, LogOut, PackageCheck, RotateCcw, ShoppingBag, ShoppingCart, Truck, Warehouse } from 'lucide-react'
+import { Boxes, ChartNoAxesCombined, ClipboardList, HelpCircle, LayoutDashboard, LogOut, PackageCheck, RotateCcw, ShieldCheck, ShoppingBag, ShoppingCart, Truck, Warehouse } from 'lucide-react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 
@@ -13,6 +13,9 @@ const navItems = [
   { to: '/admin/customer-orders', label: 'Customer orders', icon: ShoppingBag, roles: ['OWNER', 'ADMIN', 'WAREHOUSE_STAFF', 'CUSTOMER_SUPPORT', 'ACCOUNTANT', 'CASHIER'] },
   { to: '/admin/pos', label: 'Sales and POS', icon: ShoppingCart, roles: ['OWNER', 'ADMIN', 'CASHIER', 'ACCOUNTANT'] },
   { to: '/admin/returns', label: 'Returns', icon: RotateCcw, roles: ['OWNER', 'ADMIN', 'CUSTOMER_SUPPORT', 'WAREHOUSE_STAFF', 'INVENTORY_MANAGER', 'CASHIER', 'ACCOUNTANT'] },
+  { to: '/admin/support-tickets', label: 'Support tickets', icon: HelpCircle, roles: ['OWNER', 'ADMIN', 'CUSTOMER_SUPPORT', 'WAREHOUSE_STAFF', 'INVENTORY_MANAGER', 'CASHIER', 'ACCOUNTANT'] },
+  { to: '/admin/reports', label: 'Reports & CSV', icon: ChartNoAxesCombined, roles: ['OWNER', 'ADMIN', 'ACCOUNTANT', 'INVENTORY_MANAGER', 'PURCHASING_OFFICER'] },
+  { to: '/admin/security', label: 'Users & Audit', icon: ShieldCheck, roles: ['OWNER', 'ADMIN'] },
 ]
 
 export function AdminLayout() {

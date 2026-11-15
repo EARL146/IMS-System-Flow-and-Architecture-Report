@@ -22,7 +22,9 @@ backend/target/
 data/
 uploads/
 exports/
+backups/
 *.sql.gz
+*.sha256
 *.dump
 
 # Editors and OS

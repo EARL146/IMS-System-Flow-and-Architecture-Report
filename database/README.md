@@ -1,14 +1,10 @@
-# MySQL setup
+# MySQL Setup & Least-Privilege Security
 
-The Spring Boot API connects to MySQL directly. phpMyAdmin is used only to provision and inspect the database.
+The Spring Boot API connects to MySQL directly. phpMyAdmin or the `mysql` CLI is used only to provision and inspect the database.
 
-1. In phpMyAdmin, open the SQL tab and run [create-database.sql](create-database.sql). It creates only the project database, `inventory_management_system`; it does not touch any other database.
-2. In phpMyAdmin's User accounts page, create a dedicated `ims_app` account for host `127.0.0.1`. Use a strong local password and grant access only to `inventory_management_system`.
-3. Flyway runs migrations on API startup. The current shared application/migration account needs schema migration privileges as well as application read/write privileges. Split these accounts before production.
-4. Set the matching URL, username, and password in the root `.env` file, then load it in each PowerShell terminal with `. .\\scripts\\load-env.ps1`.
-
-The V1 migration is at `backend/src/main/resources/db/migration/V1__initial_schema.sql`. Do not import that migration manually; Flyway tracks and applies it.
-
-## Current verification limit
-
-The local MySQL service is present, but the available unauthenticated `root` login was rejected. The project has not created a database, user, or table on this machine. MySQL migration and phpMyAdmin verification remain pending until a valid admin login and dedicated app account are available.
+1. Run [create-database.sql](file:///c:/Users/shizu/OneDrive/Desktop/IMS/database/create-database.sql) to create the `inventory_management_system` database (`utf8mb4_0900_ai_ci`).
+2. Run [setup-users.sql](file:///c:/Users/shizu/OneDrive/Desktop/IMS/database/setup-users.sql) (after replacing the placeholder passwords) to provision two separate accounts:
+   - `ims_migrator`: Used for Flyway schema migrations (`V1` through `V8`).
+   - `ims_app`: Least-privilege runtime account granted only `SELECT, INSERT, UPDATE, DELETE` on `inventory_management_system.*`.
+3. Set the matching URL, username, and password in the root `.env` file, then load it in each PowerShell terminal with `. .\scripts\load-env.ps1`.
+4. Use [scripts/backup-db.ps1](file:///c:/Users/shizu/OneDrive/Desktop/IMS/scripts/backup-db.ps1) and [scripts/restore-db.ps1](file:///c:/Users/shizu/OneDrive/Desktop/IMS/scripts/restore-db.ps1) for transactional backups with SHA-256 integrity verification.

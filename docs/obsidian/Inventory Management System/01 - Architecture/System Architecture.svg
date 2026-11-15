@@ -1,0 +1,219 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1680" height="1080" viewBox="0 0 1680 1080" role="img" aria-labelledby="title desc">
+  <title id="title">Inventory Management System architecture</title>
+  <desc id="desc">Customer and staff browser applications connect to a Spring Boot API. The API uses authentication and role checks, domain services, JPA repositories, and a MySQL database. Flyway manages schema migrations. Supplier credits and payment records are entered manually; external accounting and payment integrations are not connected.</desc>
+  <defs>
+    <linearGradient id="page" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f4f7fb"/>
+      <stop offset="1" stop-color="#eaf0f6"/>
+    </linearGradient>
+    <linearGradient id="navy" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#16354a"/>
+      <stop offset="1" stop-color="#234d61"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="7" stdDeviation="12" flood-color="#173649" flood-opacity="0.08"/>
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10Z" fill="#557687"/>
+    </marker>
+    <marker id="arrowDashed" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10Z" fill="#ae8650"/>
+    </marker>
+    <style>
+      text{font-family:Inter,"Segoe UI",Arial,sans-serif;fill:#203b4a}
+      .eyebrow{font-size:12px;font-weight:800;letter-spacing:2px;fill:#4b817c}
+      .title{font-size:34px;font-weight:750;letter-spacing:-.8px;fill:#153648}
+      .subtitle{font-size:14px;fill:#6d818c}
+      .zone{font-size:12px;font-weight:800;letter-spacing:1.5px;fill:#5e7784}
+      .cardTitle{font-size:16px;font-weight:750;fill:#203d4b}
+      .body{font-size:12px;fill:#5e747f}
+      .small{font-size:10.5px;fill:#71858f}
+      .tiny{font-size:9.5px;fill:#7e9098}
+      .white{fill:#ffffff}
+      .mutedWhite{fill:#d6e4e9}
+      .panel{fill:#ffffff;stroke:#dce5eb;stroke-width:1.3}
+      .inner{fill:#f7fafc;stroke:#e1e9ee;stroke-width:1}
+      .line{fill:none;stroke:#557687;stroke-width:2.5;marker-end:url(#arrow)}
+      .dash{fill:none;stroke:#ae8650;stroke-width:2.2;stroke-dasharray:7 7;marker-end:url(#arrowDashed)}
+    </style>
+  </defs>
+
+  <rect width="1680" height="1080" fill="url(#page)"/>
+  <circle cx="1520" cy="65" r="170" fill="#3f8c8010"/>
+  <circle cx="1435" cy="70" r="115" fill="#d6ae6c12"/>
+
+  <text x="42" y="43" class="eyebrow">IMS · CURRENT SYSTEM</text>
+  <text x="42" y="88" class="title">Inventory Management System</text>
+  <text x="43" y="116" class="subtitle">Browser clients · Spring Boot API · transactional inventory ledger · MySQL persistence</text>
+  <g transform="translate(1272 49)">
+    <rect width="365" height="45" rx="22.5" fill="#fff" stroke="#d8e4e8"/>
+    <circle cx="22" cy="22.5" r="5" fill="#d39a56"/>
+    <text x="38" y="27" font-size="11" font-weight="700" fill="#617781">MySQL migration verification pending</text>
+  </g>
+
+  <!-- Main request path -->
+  <path d="M260 407H300" class="line"/>
+  <path d="M610 450H660" class="line"/>
+  <path d="M1210 500H1260" class="line"/>
+  <text x="270" y="393" class="tiny">HTTPS</text>
+  <text x="615" y="436" class="tiny">JSON · /api/v1</text>
+  <text x="1213" y="486" class="tiny">JPA</text>
+
+  <!-- People and external operations -->
+  <g filter="url(#shadow)">
+    <rect x="35" y="155" width="225" height="515" rx="18" class="panel"/>
+  </g>
+  <text x="58" y="190" class="zone">PEOPLE</text>
+  <rect x="55" y="212" width="185" height="145" rx="13" fill="#edf6f3" stroke="#d8e9e3"/>
+  <circle cx="82" cy="246" r="13" fill="#2e8b7d"/>
+  <path d="M61 290c2-17 11-25 21-25s19 8 21 25" fill="#2e8b7d"/>
+  <text x="116" y="246" class="cardTitle">Customers</text>
+  <text x="116" y="268" class="body">Storefront and account</text>
+  <text x="70" y="321" class="small">Catalog · cart · checkout</text>
+  <text x="70" y="338" class="small">orders · customer returns</text>
+
+  <rect x="55" y="375" width="185" height="255" rx="13" fill="#f3f6fb" stroke="#e0e7ef"/>
+  <circle cx="82" cy="411" r="13" fill="#537ba1"/>
+  <path d="M61 455c2-17 11-25 21-25s19 8 21 25" fill="#537ba1"/>
+  <text x="116" y="411" class="cardTitle">Staff</text>
+  <text x="70" y="481" class="body">Owner / admin</text>
+  <text x="70" y="505" class="small">Purchasing officer</text>
+  <text x="70" y="526" class="small">Warehouse / inventory</text>
+  <text x="70" y="547" class="small">Cashier / accountant</text>
+  <text x="70" y="568" class="small">Customer support</text>
+  <text x="70" y="603" class="tiny">Role-checked staff workspaces</text>
+
+  <g filter="url(#shadow)">
+    <rect x="35" y="700" width="575" height="205" rx="18" fill="#fffaf2" stroke="#eadfc9" stroke-width="1.2"/>
+  </g>
+  <text x="58" y="735" class="zone" fill="#9a7745">MANUAL / EXTERNAL OPERATIONS</text>
+  <text x="58" y="769" class="cardTitle">Suppliers and financial processes</text>
+  <text x="58" y="793" class="body">Staff record receipt, dispatch, refunds, and supplier credit references in IMS.</text>
+  <text x="58" y="819" class="small">Supplier communication happens outside the application.</text>
+  <text x="58" y="842" class="small">No payment gateway or accounts-payable system is connected.</text>
+  <text x="405" y="778" class="tiny" fill="#9a7745">manual data entry</text>
+
+  <!-- Frontend -->
+  <g filter="url(#shadow)">
+    <rect x="300" y="155" width="310" height="515" rx="18" class="panel"/>
+  </g>
+  <rect x="300" y="155" width="310" height="72" rx="18" fill="url(#navy)"/>
+  <path d="M300 209V227H610V209" fill="url(#navy)"/>
+  <text x="324" y="185" class="eyebrow mutedWhite">01 · CLIENT APPLICATION</text>
+  <text x="324" y="211" font-size="18" font-weight="750" class="white">React + TypeScript</text>
+  <rect x="322" y="250" width="266" height="112" rx="12" class="inner"/>
+  <rect x="338" y="267" width="32" height="32" rx="9" fill="#e3f2ed"/>
+  <path d="M346 283h16m-13-7h10m-10 14h10" stroke="#2b897b" stroke-width="2" stroke-linecap="round"/>
+  <text x="382" y="279" class="cardTitle">Customer storefront</text>
+  <text x="382" y="301" class="small">Catalog · cart · checkout</text>
+  <text x="338" y="333" class="small">Account, orders, addresses and returns</text>
+
+  <rect x="322" y="378" width="266" height="170" rx="12" class="inner"/>
+  <rect x="338" y="395" width="32" height="32" rx="9" fill="#edf1fa"/>
+  <path d="M345 403h18v15h-18zm4 19h10m-5-4v4" fill="none" stroke="#52749a" stroke-width="1.7" stroke-linejoin="round"/>
+  <text x="382" y="407" class="cardTitle">Staff workspace</text>
+  <text x="338" y="453" class="small">Catalog · inventory · warehouses</text>
+  <text x="338" y="475" class="small">Suppliers · purchasing · returns</text>
+  <text x="338" y="497" class="small">Customer orders · POS · refunds</text>
+  <text x="338" y="526" class="tiny">Routes and actions follow staff roles</text>
+
+  <rect x="322" y="564" width="266" height="80" rx="12" fill="#f0f7f6" stroke="#dbece8"/>
+  <text x="340" y="589" class="cardTitle" font-size="13">Shared web client</text>
+  <text x="340" y="611" class="small">Vite build · React Router · API client</text>
+  <text x="340" y="629" class="tiny">Access token + secure refresh session</text>
+
+  <!-- Manual processes feed staff-entered information into the workspace -->
+  <path d="M600 700H635V470H588" class="dash"/>
+
+  <!-- API boundary -->
+  <g filter="url(#shadow)">
+    <rect x="660" y="155" width="550" height="770" rx="18" class="panel"/>
+  </g>
+  <rect x="660" y="155" width="550" height="72" rx="18" fill="url(#navy)"/>
+  <path d="M660 209V227H1210V209" fill="url(#navy)"/>
+  <text x="685" y="185" class="eyebrow mutedWhite">02 · APPLICATION API</text>
+  <text x="685" y="211" font-size="18" font-weight="750" class="white">Spring Boot 3 · Java 21</text>
+
+  <rect x="685" y="250" width="500" height="78" rx="12" fill="#edf5f4" stroke="#d7e9e5"/>
+  <text x="705" y="278" class="cardTitle">Security boundary</text>
+  <text x="705" y="301" class="small">JWT access · rotating refresh sessions · Origin checks · role guards</text>
+
+  <path d="M935 328V349" class="line"/>
+  <rect x="685" y="351" width="500" height="88" rx="12" class="inner"/>
+  <text x="705" y="381" class="cardTitle">Versioned controllers + DTO validation</text>
+  <text x="705" y="405" class="small">/api/v1 · request validation · consistent API errors · OpenAPI</text>
+  <text x="705" y="424" class="tiny">Persistence entities are not serialized directly</text>
+
+  <path d="M935 439V461" class="line"/>
+  <rect x="685" y="463" width="500" height="251" rx="12" fill="#f8fafc" stroke="#dfe7ec"/>
+  <text x="705" y="492" class="cardTitle">Transactional domain services</text>
+  <rect x="705" y="510" width="220" height="68" rx="9" fill="#fff" stroke="#e1e9ee"/>
+  <text x="721" y="536" font-size="12" font-weight="700">Catalog &amp; suppliers</text>
+  <text x="721" y="557" class="tiny">products · purchasing · receiving</text>
+  <rect x="945" y="510" width="220" height="68" rx="9" fill="#fff" stroke="#e1e9ee"/>
+  <text x="961" y="536" font-size="12" font-weight="700">Inventory &amp; ledger</text>
+  <text x="961" y="557" class="tiny">locked balances · movements</text>
+  <rect x="705" y="591" width="220" height="68" rx="9" fill="#fff" stroke="#e1e9ee"/>
+  <text x="721" y="617" font-size="12" font-weight="700">Customer commerce</text>
+  <text x="721" y="638" class="tiny">cart · checkout · orders · returns</text>
+  <rect x="945" y="591" width="220" height="68" rx="9" fill="#fff" stroke="#e1e9ee"/>
+  <text x="961" y="617" font-size="12" font-weight="700">POS &amp; staff operations</text>
+  <text x="961" y="638" class="tiny">sales · fulfillment · refunds</text>
+  <text x="705" y="690" class="tiny">Business rules and inventory changes run inside database transactions</text>
+
+  <path d="M935 714V736" class="line"/>
+  <rect x="685" y="738" width="500" height="78" rx="12" class="inner"/>
+  <text x="705" y="767" class="cardTitle">JPA repositories</text>
+  <text x="705" y="791" class="small">Persistence access · row locks · unique idempotency keys</text>
+
+  <path d="M935 816V839" class="line"/>
+  <rect x="685" y="841" width="500" height="58" rx="12" fill="#f0f7f6" stroke="#d8e9e5"/>
+  <text x="705" y="866" font-size="12" font-weight="750">Inventory integrity</text>
+  <text x="705" y="886" class="tiny">Balance projections + append-only movement history commit together</text>
+
+  <!-- Persistence -->
+  <g filter="url(#shadow)">
+    <rect x="1260" y="205" width="385" height="690" rx="18" class="panel"/>
+  </g>
+  <rect x="1260" y="205" width="385" height="78" rx="18" fill="#24796f"/>
+  <path d="M1260 264V283H1645V264" fill="#24796f"/>
+  <text x="1285" y="237" class="eyebrow mutedWhite">03 · PERSISTENCE</text>
+  <text x="1285" y="265" font-size="19" font-weight="750" class="white">MySQL 8</text>
+
+  <rect x="1285" y="304" width="335" height="80" rx="12" fill="#fff8ec" stroke="#ecdfc8"/>
+  <text x="1305" y="333" class="cardTitle">Flyway schema migrations</text>
+  <text x="1305" y="357" class="small">V1–V7 authored and versioned</text>
+  <text x="1305" y="376" class="tiny">MySQL migration/startup verification remains</text>
+  <path d="M1452 384V400" class="line"/>
+
+  <rect x="1285" y="402" width="335" height="105" rx="12" class="inner"/>
+  <text x="1305" y="431" class="cardTitle">Business records</text>
+  <text x="1305" y="455" class="small">Users · roles · products · warehouses</text>
+  <text x="1305" y="478" class="small">Suppliers · purchase orders · receipts</text>
+  <text x="1305" y="497" class="tiny">Carts · orders · returns · POS sales</text>
+
+  <rect x="1285" y="523" width="335" height="129" rx="12" fill="#f0f7f6" stroke="#dcebe7"/>
+  <text x="1305" y="553" class="cardTitle">Inventory source of truth</text>
+  <rect x="1305" y="570" width="135" height="60" rx="8" fill="#fff" stroke="#d8e7e2"/>
+  <text x="1317" y="594" font-size="11" font-weight="700">inventory_balances</text>
+  <text x="1317" y="615" class="tiny">on-hand · reserved · damaged</text>
+  <rect x="1452" y="570" width="148" height="60" rx="8" fill="#fff" stroke="#d8e7e2"/>
+  <text x="1464" y="594" font-size="11" font-weight="700">inventory_movements</text>
+  <text x="1464" y="615" class="tiny">signed, referenced stock events</text>
+
+  <rect x="1285" y="668" width="335" height="87" rx="12" class="inner"/>
+  <text x="1305" y="697" class="cardTitle">Reliability records</text>
+  <text x="1305" y="721" class="small">Refresh sessions · payment/refund records</text>
+  <text x="1305" y="741" class="tiny">Idempotency keys · order status history</text>
+
+  <rect x="1285" y="774" width="335" height="71" rx="11" fill="#f8fafc" stroke="#e1e9ee"/>
+  <text x="1305" y="801" class="small" font-weight="700">No external service connection</text>
+  <text x="1305" y="824" class="tiny">Payment gateway and accounts payable are not integrated</text>
+
+  <!-- Legend and system boundary -->
+  <line x1="45" y1="971" x2="91" y2="971" stroke="#557687" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <text x="105" y="975" class="small">Live application request or data path</text>
+  <line x1="370" y1="971" x2="416" y2="971" stroke="#ae8650" stroke-width="2.2" stroke-dasharray="7 7" marker-end="url(#arrowDashed)"/>
+  <text x="430" y="975" class="small">Manual / external process</text>
+  <text x="45" y="1018" class="tiny">Architecture reflects the implemented system. MySQL V7 is authored but has not been verified against the local MySQL instance.</text>
+</svg>

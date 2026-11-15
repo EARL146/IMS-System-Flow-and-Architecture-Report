@@ -1,5 +1,6 @@
 package com.ims.api.inventory;
 
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -22,6 +23,23 @@ public final class InventoryDtos {
     ) {
     }
 
+    public record TransferRequest(
+            @NotNull Long productId,
+            @NotNull Long sourceWarehouseId,
+            @NotNull Long destinationWarehouseId,
+            @NotNull @DecimalMin("0.001") @Digits(integer = 15, fraction = 3) BigDecimal quantity,
+            @NotNull UUID idempotencyKey,
+            @NotBlank @Size(max = 240) String reason
+    ) {
+    }
+
+    public record TransferResponse(
+            String transferReference,
+            MovementResponse outboundMovement,
+            MovementResponse inboundMovement
+    ) {
+    }
+
     public record StockSummary(BigDecimal totalOnHand, BigDecimal totalAvailable) {
     }
 
@@ -36,7 +54,7 @@ public final class InventoryDtos {
             BigDecimal damaged,
             BigDecimal available
     ) {
-        static StockResponse from(InventoryBalance balance) {
+        public static StockResponse from(InventoryBalance balance) {
             return new StockResponse(
                     balance.getProduct().getId(), balance.getProduct().getSku(), balance.getProduct().getName(),
                     balance.getWarehouse().getId(), balance.getWarehouse().getName(),
@@ -61,7 +79,7 @@ public final class InventoryDtos {
             String reason,
             Instant occurredAt
     ) {
-        static MovementResponse from(InventoryMovement movement) {
+        public static MovementResponse from(InventoryMovement movement) {
             return new MovementResponse(
                     movement.getId(), movement.getProduct().getId(), movement.getProduct().getSku(),
                     movement.getProduct().getName(), movement.getWarehouse().getId(),
